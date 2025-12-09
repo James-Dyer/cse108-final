@@ -49,10 +49,12 @@ def add_cors_headers(response):
     if origin in ALLOWED_ORIGINS:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Headers"] = (
-            request.headers.get("Access-Control-Request-Headers", "Content-Type")
+        response.headers["Access-Control-Allow-Headers"] = request.headers.get(
+            "Access-Control-Request-Headers", "Content-Type"
         )
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        )
     return response
 
 
@@ -310,4 +312,4 @@ with app.app_context():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)

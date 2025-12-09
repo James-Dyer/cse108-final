@@ -1,7 +1,15 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  Link,
+  Navigate,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import "./App.css";
-
-type Page = "login" | "dashboard" | "assignment" | "concepts" | "workspace";
 
 type User = {
   id: number;
@@ -96,12 +104,13 @@ const deriveConcepts = (raw: string): Concept[] => {
 };
 
 function App() {
-  const [page, setPage] = useState<Page>("login");
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [user, setUser] = useState<User | null>(null);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [assignmentForm, setAssignmentForm] = useState({
     title: "",
     raw_instructions: "",
@@ -117,39 +126,27 @@ function App() {
   >("idle");
   const [pyodide, setPyodide] = useState<any>(null);
 
-  const currentAssignment = useMemo(
-    () => assignments.find((a) => a.id === selectedId) || null,
-    [assignments, selectedId]
-  );
+  const apiFetch = async (path: string, init?: RequestInit) => {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers || {}),
+      },
+    });
 
-  const orderedSteps = useMemo(() => {
-    if (!currentAssignment) return [];
-    return [...currentAssignment.steps].sort(
-      (a, b) => a.order_index - b.order_index
-    );
-  }, [currentAssignment]);
-
-  const concepts = useMemo(
-    () => deriveConcepts(currentAssignment?.raw_instructions || ""),
-    [currentAssignment]
-  );
-
-  useEffect(() => {
-    if (user && page === "login") {
-      setPage("dashboard");
+    if (!response.ok) {
+      const raw = await response.text();
+      try {
+        const parsed = JSON.parse(raw);
+        throw new Error(parsed.error || raw || "Request failed");
+      } catch {
+        throw new Error(raw || "Request failed");
+      }
     }
-  }, [user, page]);
 
-  useEffect(() => {
-    if (!user && page !== "login") {
-      setPage("login");
-    }
-  }, [user, page]);
-
-  useEffect(() => {
-    if (!user) return;
-    loadAssignments();
-  }, [user]);
+    return response.json();
+  };
 
   useEffect(() => {
     if (pyodideStatus !== "idle") return;
@@ -176,36 +173,25 @@ function App() {
     document.body.appendChild(script);
   }, [pyodideStatus]);
 
-  const apiFetch = async (path: string, init?: RequestInit) => {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers || {}),
-      },
-    });
-
-    if (!response.ok) {
-      const raw = await response.text();
-      try {
-        const parsed = JSON.parse(raw);
-        throw new Error(parsed.error || raw || "Request failed");
-      } catch {
-        throw new Error(raw || "Request failed");
-      }
+  useEffect(() => {
+    if (!user && location.pathname !== "/login") {
+      navigate("/login", { replace: true });
     }
+    if (user && location.pathname === "/login") {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
 
-    return response.json();
-  };
+  useEffect(() => {
+    if (!user) return;
+    loadAssignments();
+  }, [user]);
 
   const loadAssignments = async () => {
     if (!user) return;
     try {
       const data = await apiFetch(`/api/assignments?user_id=${user.id}`);
       setAssignments(data.assignments || []);
-      if (!selectedId && data.assignments?.length) {
-        setSelectedId(data.assignments[0].id);
-      }
     } catch (error) {
       setStatusMessage("Unable to load assignments yet.");
       console.error(error);
@@ -225,7 +211,7 @@ function App() {
       setStatusMessage(
         route === "login" ? "Welcome back to Code Lab." : "Account created."
       );
-      setPage("dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
       setStatusMessage(error.message || "Auth failed.");
     }
@@ -235,6 +221,7 @@ function App() {
     event.preventDefault();
     if (!user) {
       setStatusMessage("Log in first.");
+      navigate("/login");
       return;
     }
     try {
@@ -247,10 +234,9 @@ function App() {
         body: JSON.stringify(payload),
       });
       setAssignments((prev) => [data.assignment, ...prev]);
-      setSelectedId(data.assignment.id);
       setAssignmentForm({ title: "", raw_instructions: "", language: "python" });
       setStatusMessage("Assignment drafted with a starter step plan.");
-      setPage("assignment");
+      navigate(`/assignments/${data.assignment.id}`);
     } catch (error: any) {
       setStatusMessage(error.message || "Could not create assignment.");
     }
@@ -260,20 +246,11 @@ function App() {
     try {
       await apiFetch(`/api/assignments/${id}`, { method: "DELETE" });
       setAssignments((prev) => prev.filter((a) => a.id !== id));
-      if (selectedId === id) {
-        setSelectedId(null);
-        setPage("dashboard");
-      }
       setStatusMessage("Assignment removed.");
+      navigate("/dashboard");
     } catch (error: any) {
       setStatusMessage(error.message || "Delete failed.");
     }
-  };
-
-  const generateHint = () => {
-    if (!currentAssignment) return "Pick or create an assignment to get hints.";
-    if (orderedSteps.length === 0) return "Add steps to start receiving targeted hints.";
-    return `Focus on: ${orderedSteps[0].title}. Keep code aligned with the brief: “${currentAssignment.raw_instructions.slice(0, 140)}...”`;
   };
 
   const runCode = async () => {
@@ -293,87 +270,83 @@ function App() {
     setConsoleText("Cleared console. Runtime still loaded.");
   };
 
-  const requireAssignment = (target: Page) => {
-    if (!currentAssignment) {
-      setStatusMessage("Select an assignment first.");
-      setPage("dashboard");
-      return;
-    }
-    setPage(target);
-  };
+  const navIsHidden = location.pathname === "/login";
 
-  const navButton = (label: string, target: Page) => (
-    <button
-      className={`nav-button ${page === target ? "active" : ""}`}
-      onClick={() =>
-        target === "dashboard"
-          ? setPage("dashboard")
-          : target === "login"
-            ? setPage("login")
-            : requireAssignment(target)
-      }
-      disabled={target !== "dashboard" && target !== "login" && !currentAssignment}
-    >
-      {label}
-    </button>
-  );
-
-  const renderLogin = () => (
-    <div className="auth-layout">
-      <div className="auth-card panel">
-        <h2>{authMode === "login" ? "Log in" : "Create account"}</h2>
-        <p className="muted">
-          Access the guided lab workspace. We keep your assignments and step plans synced.
-        </p>
-        <form className="form" onSubmit={handleAuth}>
-          <label>
-            Email
-            <input
-              type="email"
-              required
-              value={authForm.email}
-              onChange={(e) =>
-                setAuthForm({ ...authForm, email: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              required
-              value={authForm.password}
-              onChange={(e) =>
-                setAuthForm({ ...authForm, password: e.target.value })
-              }
-            />
-          </label>
-          <div className="button-row">
-            <button type="submit" className="primary">
-              {authMode === "login" ? "Enter workspace" : "Start Code Lab"}
-            </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() =>
-                setAuthMode(authMode === "login" ? "register" : "login")
-              }
-            >
-              {authMode === "login" ? "Need an account?" : "Already registered?"}
-            </button>
-          </div>
-        </form>
-      </div>
+  const brand = (
+    <div className="brand" onClick={() => navigate("/dashboard")}>
+      <span className="logo-dot" /> Code Lab
     </div>
   );
 
-  const renderDashboard = () => (
+  const activeAssignmentFromParam = (assignmentId?: string | null) => {
+    if (!assignmentId) return null;
+    const idNum = Number(assignmentId);
+    if (Number.isNaN(idNum)) return null;
+    return assignments.find((a) => a.id === idNum) || null;
+  };
+
+  const LoginPage = () => {
+    if (user) {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return (
+      <div className="auth-layout">
+        <div className="auth-card panel">
+          <p className="eyebrow">Code Lab</p>
+          <h2>{authMode === "login" ? "Log in" : "Create account"}</h2>
+          <p className="muted">
+            Access the guided lab workspace. We keep your assignments and step plans synced.
+          </p>
+          <form className="form" onSubmit={handleAuth}>
+            <label>
+              Email
+              <input
+                type="email"
+                required
+                value={authForm.email}
+                onChange={(e) =>
+                  setAuthForm({ ...authForm, email: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                required
+                value={authForm.password}
+                onChange={(e) =>
+                  setAuthForm({ ...authForm, password: e.target.value })
+                }
+              />
+            </label>
+            <div className="button-row">
+              <button type="submit" className="primary">
+                {authMode === "login" ? "Enter workspace" : "Start Code Lab"}
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() =>
+                  setAuthMode(authMode === "login" ? "register" : "login")
+                }
+              >
+                {authMode === "login" ? "Need an account?" : "Already registered?"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  const DashboardPage = () => (
     <>
       <section className="hero">
         <div>
           <h1>Dashboard</h1>
           <p className="lede">
-            Draft assignments, see progress, and jump into a guided workspace.
+            Draft assignments, see progress, and jump into a guided workspace. Plans stay deterministic and ready for analysis.
           </p>
         </div>
         <div className="status-tile">
@@ -456,8 +429,7 @@ function App() {
             {assignments.map((assignment) => (
               <article
                 key={assignment.id}
-                className={`assignment-card ${assignment.id === selectedId ? "active" : ""
-                  }`}
+                className="assignment-card"
               >
                 <div>
                   <h3>{assignment.title}</h3>
@@ -471,15 +443,9 @@ function App() {
                   </div>
                 </div>
                 <div className="card-actions">
-                  <button
-                    className="ghost"
-                    onClick={() => {
-                      setSelectedId(assignment.id);
-                      setPage("assignment");
-                    }}
-                  >
+                  <Link className="ghost" to={`/assignments/${assignment.id}`}>
                     Open
-                  </button>
+                  </Link>
                   <button
                     className="ghost danger"
                     onClick={() => handleDeleteAssignment(assignment.id)}
@@ -495,223 +461,298 @@ function App() {
     </>
   );
 
-  const renderAssignment = () => (
-    <section className="page-shell">
-      <div className="breadcrumb">
-        <button className="nav-pill" onClick={() => setPage("dashboard")}>
-          ← Dashboard
-        </button>
-        <span className="muted">Assignment overview</span>
-      </div>
-      <div className="panel overview-grid">
-        <div>
-          <h2>{currentAssignment?.title || "Select an assignment"}</h2>
-          <p className="muted">
-            {currentAssignment?.raw_instructions ||
-              "Pick an assignment from your dashboard to see the summary and plan."}
-          </p>
-          <div className="meta-row">
-            <span className="chip">Language: {currentAssignment?.language || "python"}</span>
-            <span className="chip subtle">Steps: {orderedSteps.length}</span>
-          </div>
-          <div className="button-row top-gap">
-            <button className="ghost" onClick={() => requireAssignment("concepts")}>
-              View concepts
-            </button>
-            <button className="primary" onClick={() => requireAssignment("workspace")}>
-              Open coding workspace
-            </button>
-          </div>
-        </div>
-        <div className="instruction-box">
-          <h4>Step plan</h4>
-          <ol className="steps">
-            {orderedSteps.map((step) => (
-              <li key={step.order_index}>
-                <div className="step-index">{step.order_index + 1}</div>
-                <div>
-                  <p className="step-title">{step.title}</p>
-                  <p className="muted">{step.description}</p>
-                </div>
-              </li>
-            ))}
-            {orderedSteps.length === 0 && (
-              <li className="muted">No steps yet. Add an assignment.</li>
-            )}
-          </ol>
-        </div>
-      </div>
-    </section>
-  );
+  const AssignmentOverviewPage = () => {
+    const { assignmentId } = useParams();
+    const currentAssignment = activeAssignmentFromParam(assignmentId);
+    const orderedSteps = useMemo(() => {
+      if (!currentAssignment) return [];
+      return [...currentAssignment.steps].sort(
+        (a, b) => a.order_index - b.order_index
+      );
+    }, [currentAssignment]);
 
-  const renderConcepts = () => (
-    <section className="page-shell">
-      <div className="breadcrumb">
-        <button className="nav-pill" onClick={() => setPage("assignment")}>
-          ← Assignment
-        </button>
-        <span className="muted">Concept breakdown</span>
-      </div>
-      <div className="panel">
-        <div className="panel-header">
+    if (!currentAssignment) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return (
+      <section className="page-shell">
+        <div className="breadcrumb">
+          <Link className="nav-pill" to="/dashboard">
+            ← Dashboard
+          </Link>
+          <span className="muted">Assignment overview</span>
+        </div>
+        <div className="panel overview-grid">
           <div>
-            <h2>Mini-lessons for this prompt</h2>
-            <p className="muted">
-              Derived deterministically from your instructions so you can prep before coding.
-            </p>
+            <p className="eyebrow">Assignment</p>
+            <h2>{currentAssignment.title}</h2>
+            <p className="muted">{currentAssignment.raw_instructions}</p>
+            <div className="meta-row">
+              <span className="chip">Language: {currentAssignment.language}</span>
+              <span className="chip subtle">Steps: {orderedSteps.length}</span>
+            </div>
+            <div className="button-row top-gap">
+              <Link className="ghost" to={`/assignments/${currentAssignment.id}/concepts`}>
+                View concepts
+              </Link>
+              <Link className="primary" to={`/assignments/${currentAssignment.id}/workspace`}>
+                Open coding workspace
+              </Link>
+            </div>
           </div>
-          <span className="chip subtle">{concepts.length} tags</span>
-        </div>
-        <div className="concept-grid">
-          {concepts.map((concept) => (
-            <article key={concept.tag} className="concept-card">
-              <span className="concept-tag">{concept.tag}</span>
-              <p>{concept.summary}</p>
-              <p className="muted small">
-                <strong>Example:</strong> {concept.example}
-              </p>
-              {concept.pitfalls && (
-                <p className="muted small">
-                  <strong>Watch for:</strong> {concept.pitfalls}
-                </p>
+          <div className="instruction-box">
+            <h4>Step plan</h4>
+            <ol className="steps">
+              {orderedSteps.map((step) => (
+                <li key={step.order_index}>
+                  <div className="step-index">{step.order_index + 1}</div>
+                  <div>
+                    <p className="step-title">{step.title}</p>
+                    <p className="muted">{step.description}</p>
+                  </div>
+                </li>
+              ))}
+              {orderedSteps.length === 0 && (
+                <li className="muted">No steps yet. Add an assignment.</li>
               )}
-            </article>
-          ))}
+            </ol>
+          </div>
         </div>
-        <div className="button-row top-gap">
-          <button className="ghost" onClick={() => setPage("assignment")}>
-            Back to overview
-          </button>
-          <button className="primary" onClick={() => setPage("workspace")}>
-            Jump into workspace
-          </button>
-        </div>
-      </div>
-    </section>
-  );
+      </section>
+    );
+  };
 
-  const renderWorkspace = () => (
-    <section className="page-shell">
-      <div className="breadcrumb">
-        <button className="nav-pill" onClick={() => setPage("assignment")}>
-          ← Assignment overview
-        </button>
-        <span className="muted">Coding workspace</span>
-      </div>
-      <div className="workspace-layout">
+  const ConceptsPage = () => {
+    const { assignmentId } = useParams();
+    const currentAssignment = activeAssignmentFromParam(assignmentId);
+    const concepts = useMemo(
+      () => deriveConcepts(currentAssignment?.raw_instructions || ""),
+      [currentAssignment]
+    );
+
+    if (!currentAssignment) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return (
+      <section className="page-shell">
+        <div className="breadcrumb">
+          <Link className="nav-pill" to={`/assignments/${currentAssignment.id}`}>
+            ← Assignment
+          </Link>
+          <span className="muted">Concept breakdown</span>
+        </div>
         <div className="panel">
           <div className="panel-header">
             <div>
-              <h3>{currentAssignment?.title || "Select an assignment"}</h3>
+              <p className="eyebrow">Concepts</p>
+              <h2>Mini-lessons for this prompt</h2>
+              <p className="muted">
+                Derived deterministically from your instructions so you can prep before coding.
+              </p>
             </div>
-            <span className="chip subtle">
-              {currentAssignment ? currentAssignment.language : "python"}
-            </span>
+            <span className="chip subtle">{concepts.length} tags</span>
           </div>
-          <p className="muted">
-            {currentAssignment?.raw_instructions ||
-              "Pick an assignment to view its prompt, steps, and hints."}
-          </p>
-          <h4>Plan</h4>
-          <ol className="steps">
-            {orderedSteps.map((step) => (
-              <li key={step.order_index}>
-                <div className="step-index">{step.order_index + 1}</div>
-                <div>
-                  <p className="step-title">{step.title}</p>
-                  <p className="muted">{step.description}</p>
-                </div>
-              </li>
+          <div className="concept-grid">
+            {concepts.map((concept) => (
+              <article key={concept.tag} className="concept-card">
+                <span className="concept-tag">{concept.tag}</span>
+                <p>{concept.summary}</p>
+                <p className="muted small">
+                  <strong>Example:</strong> {concept.example}
+                </p>
+                {concept.pitfalls && (
+                  <p className="muted small">
+                    <strong>Watch for:</strong> {concept.pitfalls}
+                  </p>
+                )}
+              </article>
             ))}
-            {orderedSteps.length === 0 && (
-              <li className="muted">No steps yet. Add an assignment.</li>
-            )}
-          </ol>
-          <div className="side-card">
-            <h4>Hint</h4>
-            <p className="muted">{generateHint()}</p>
-            <div className="button-row top-gap">
-              <button className="ghost" onClick={() => setStatusMessage(generateHint())}>
-                Refresh hint
-              </button>
-            </div>
+          </div>
+          <div className="button-row top-gap">
+            <Link className="ghost" to={`/assignments/${currentAssignment.id}`}>
+              Back to overview
+            </Link>
+            <Link className="primary" to={`/assignments/${currentAssignment.id}/workspace`}>
+              Jump into workspace
+            </Link>
           </div>
         </div>
-
-        <div className="panel code-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Editor & console</h2>
-            </div>
-            <div className="button-row">
-              <button className="ghost" onClick={resetRuntime}>
-                Reset console
-              </button>
-              <button className="primary" onClick={runCode}>
-                Run code
-              </button>
-            </div>
-          </div>
-          <div className="editor">
-            <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              spellCheck={false}
-            />
-            <div className="console">
-              <div className="console-label">Output</div>
-              <pre>{consoleText}</pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-
-  const renderPage = () => {
-    switch (page) {
-      case "login":
-        return renderLogin();
-      case "dashboard":
-        return renderDashboard();
-      case "assignment":
-        return renderAssignment();
-      case "concepts":
-        return renderConcepts();
-      case "workspace":
-        return renderWorkspace();
-      default:
-        return null;
-    }
+      </section>
+    );
   };
+
+  const WorkspacePage = () => {
+    const { assignmentId } = useParams();
+    const currentAssignment = activeAssignmentFromParam(assignmentId);
+    const orderedSteps = useMemo(() => {
+      if (!currentAssignment) return [];
+      return [...currentAssignment.steps].sort(
+        (a, b) => a.order_index - b.order_index
+      );
+    }, [currentAssignment]);
+
+    const generateHint = () => {
+      if (!currentAssignment) return "Pick or create an assignment to get hints.";
+      if (orderedSteps.length === 0) return "Add steps to start receiving targeted hints.";
+      return `Focus on: ${orderedSteps[0].title}. Keep code aligned with the brief: “${currentAssignment.raw_instructions.slice(0, 140)}...”`;
+    };
+
+    if (!currentAssignment) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return (
+      <section className="page-shell">
+        <div className="breadcrumb">
+          <Link className="nav-pill" to={`/assignments/${currentAssignment.id}`}>
+            ← Assignment overview
+          </Link>
+          <span className="muted">Coding workspace</span>
+        </div>
+        <div className="workspace-layout">
+          <div className="panel">
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">Instructions</p>
+                <h3>{currentAssignment.title}</h3>
+              </div>
+              <span className="chip subtle">
+                {currentAssignment.language}
+              </span>
+            </div>
+            <p className="muted">
+              {currentAssignment.raw_instructions ||
+                "Pick an assignment to view its prompt, steps, and hints."}
+            </p>
+            <h4>Plan</h4>
+            <ol className="steps">
+              {orderedSteps.map((step) => (
+                <li key={step.order_index}>
+                  <div className="step-index">{step.order_index + 1}</div>
+                  <div>
+                    <p className="step-title">{step.title}</p>
+                    <p className="muted">{step.description}</p>
+                  </div>
+                </li>
+              ))}
+              {orderedSteps.length === 0 && (
+                <li className="muted">No steps yet. Add an assignment.</li>
+              )}
+            </ol>
+            <div className="side-card">
+              <h4>Hint</h4>
+              <p className="muted">{generateHint()}</p>
+              <div className="button-row top-gap">
+                <button className="ghost" onClick={() => setStatusMessage(generateHint())}>
+                  Refresh hint
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel code-panel">
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">Python runtime</p>
+                <h2>Editor & console</h2>
+              </div>
+              <div className="button-row">
+                <button className="ghost" onClick={resetRuntime}>
+                  Reset console
+                </button>
+                <button className="primary" onClick={runCode}>
+                  Run code
+                </button>
+              </div>
+            </div>
+            <div className="editor">
+              <textarea
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                spellCheck={false}
+              />
+              <div className="console">
+                <div className="console-label">Output</div>
+                <pre>{consoleText}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  const protectedRoute = (element: ReactNode) =>
+    user ? element : <Navigate to="/login" replace />;
 
   return (
     <div className="page">
-      <header className="top-bar">
-        <div className="brand" onClick={() => setPage("dashboard")}>
-          <span className="logo-dot" /> Code Lab
-        </div>
-        <div className="nav-links">
-          {navButton("Login", "login")}
-          {navButton("Dashboard", "dashboard")}
-          {navButton("Assignment", "assignment")}
-          {navButton("Concepts", "concepts")}
-          {navButton("Workspace", "workspace")}
-        </div>
-        <div className="user-chip">
-          {user ? (
-            <>
-              <span className="chip subtle">{user.email}</span>
-              <button className="ghost" onClick={() => setUser(null)}>
-                Log out
-              </button>
-            </>
-          ) : (
-            <span className="muted small">Not signed in</span>
-          )}
-        </div>
-      </header>
-      <main>{renderPage()}</main>
+      {!navIsHidden && (
+        <header className="top-bar">
+          {brand}
+          <div className="nav-links">
+            <NavLink
+              className={({ isActive }) =>
+                `nav-button ${isActive ? "active" : ""}`
+              }
+              to="/dashboard"
+            >
+              Dashboard
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                `nav-button ${isActive ? "active" : ""}`
+              }
+              to="/dashboard#new"
+            >
+              Draft
+            </NavLink>
+          </div>
+          <div className="user-chip">
+            {user ? (
+              <>
+                <span className="chip subtle">{user.email}</span>
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    setUser(null);
+                    navigate("/login");
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <Link className="ghost" to="/login">
+                Log in
+              </Link>
+            )}
+          </div>
+        </header>
+      )}
+
+      <main>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={protectedRoute(<DashboardPage />)} />
+          <Route
+            path="/assignments/:assignmentId"
+            element={protectedRoute(<AssignmentOverviewPage />)}
+          />
+          <Route
+            path="/assignments/:assignmentId/concepts"
+            element={protectedRoute(<ConceptsPage />)}
+          />
+          <Route
+            path="/assignments/:assignmentId/workspace"
+            element={protectedRoute(<WorkspacePage />)}
+          />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </main>
       {statusMessage && <div className="toast">{statusMessage}</div>}
     </div>
   );
