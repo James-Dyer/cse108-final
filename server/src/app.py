@@ -176,7 +176,9 @@ def list_assignments():
     if user_id:
         query = query.filter_by(user_id=user_id)
     assignments = query.order_by(Assignment.created_at.desc()).all()
-    return jsonify({"assignments": [a.to_dict(include_steps=True) for a in assignments]})
+    return jsonify(
+        {"assignments": [a.to_dict(include_steps=True) for a in assignments]}
+    )
 
 
 @app.route("/api/assignments", methods=["POST"])
@@ -188,7 +190,10 @@ def create_assignment():
     language = (data.get("language") or "python").strip().lower()
 
     if not user_id or not title or not instructions:
-        return jsonify({"error": "user_id, title, and raw_instructions are required."}), 400
+        return (
+            jsonify({"error": "user_id, title, and raw_instructions are required."}),
+            400,
+        )
 
     assignment = Assignment(
         user_id=user_id,
@@ -267,4 +272,4 @@ with app.app_context():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)

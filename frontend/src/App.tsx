@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import "./App.css";
 
+type Page = "login" | "dashboard" | "assignment" | "concepts" | "workspace";
+
 type User = {
   id: number;
   email: string;
@@ -22,9 +24,79 @@ type Assignment = {
   steps: Step[];
 };
 
+type Concept = {
+  tag: string;
+  summary: string;
+  example: string;
+  pitfalls?: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
+const deriveConcepts = (raw: string): Concept[] => {
+  const lowered = raw.toLowerCase();
+  const concepts: Concept[] = [];
+
+  const addUnique = (concept: Concept) => {
+    if (!concepts.find((c) => c.tag === concept.tag)) concepts.push(concept);
+  };
+
+  if (lowered.includes("loop") || lowered.includes("iterate")) {
+    addUnique({
+      tag: "Iteration patterns",
+      summary: "Choose between for/while, and keep counters and bounds obvious.",
+      example: "for i, value in enumerate(items): ...",
+      pitfalls: "Off-by-one errors and mutating while iterating.",
+    });
+  }
+
+  if (lowered.includes("recursion")) {
+    addUnique({
+      tag: "Recursion hygiene",
+      summary: "Define a base case, then shrink the input before recurring.",
+      example: "if not nums: return 0\nreturn nums[0] + sum_rest(nums[1:])",
+      pitfalls: "Missing base cases or forgetting to return recursion results.",
+    });
+  }
+
+  if (lowered.includes("string")) {
+    addUnique({
+      tag: "String parsing",
+      summary: "Normalize casing and strip whitespace before comparison.",
+      example: 'clean = text.strip().lower().split(",")',
+      pitfalls: "Comparing raw user input without trimming.",
+    });
+  }
+
+  if (lowered.includes("file") || lowered.includes("input")) {
+    addUnique({
+      tag: "Input handling",
+      summary: "Validate shape early; fail fast with helpful messages.",
+      example: "if len(parts) != 3: raise ValueError('Need 3 fields')",
+      pitfalls: "Silently accepting malformed rows and crashing later.",
+    });
+  }
+
+  const baseline: Concept[] = [
+    {
+      tag: "Prompt synthesis",
+      summary: "Rewrite the prompt in your own words; capture inputs, outputs, and constraints.",
+      example: "Input: list of grades. Output: curved grades rounded to int.",
+      pitfalls: "Starting code before clarifying edge cases.",
+    },
+    {
+      tag: "Testing mindset",
+      summary: "Craft tiny examples before full runs; hit happy path and one edge case.",
+      example: "Given [1,2,3], expect [2,4,6]. Edge: [].",
+      pitfalls: "Only testing the sample input from the prompt.",
+    },
+  ];
+
+  return [...concepts, ...baseline].slice(0, 6);
+};
+
 function App() {
+  const [page, setPage] = useState<Page>("login");
   const [user, setUser] = useState<User | null>(null);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
@@ -56,6 +128,23 @@ function App() {
       (a, b) => a.order_index - b.order_index
     );
   }, [currentAssignment]);
+
+  const concepts = useMemo(
+    () => deriveConcepts(currentAssignment?.raw_instructions || ""),
+    [currentAssignment]
+  );
+
+  useEffect(() => {
+    if (user && page === "login") {
+      setPage("dashboard");
+    }
+  }, [user, page]);
+
+  useEffect(() => {
+    if (!user && page !== "login") {
+      setPage("login");
+    }
+  }, [user, page]);
 
   useEffect(() => {
     if (!user) return;
@@ -136,6 +225,7 @@ function App() {
       setStatusMessage(
         route === "login" ? "Welcome back to Code Lab." : "Account created."
       );
+      setPage("dashboard");
     } catch (error: any) {
       setStatusMessage(error.message || "Auth failed.");
     }
@@ -160,6 +250,7 @@ function App() {
       setSelectedId(data.assignment.id);
       setAssignmentForm({ title: "", raw_instructions: "", language: "python" });
       setStatusMessage("Assignment drafted with a starter step plan.");
+      setPage("assignment");
     } catch (error: any) {
       setStatusMessage(error.message || "Could not create assignment.");
     }
@@ -171,6 +262,7 @@ function App() {
       setAssignments((prev) => prev.filter((a) => a.id !== id));
       if (selectedId === id) {
         setSelectedId(null);
+        setPage("dashboard");
       }
       setStatusMessage("Assignment removed.");
     } catch (error: any) {
@@ -178,12 +270,10 @@ function App() {
     }
   };
 
-  const selectedStep = orderedSteps[0];
-
   const generateHint = () => {
     if (!currentAssignment) return "Pick or create an assignment to get hints.";
-    if (!selectedStep) return "Add steps to start receiving targeted hints.";
-    return `Focus on: ${selectedStep.title}. Keep code aligned with the brief: “${currentAssignment.raw_instructions.slice(0, 120)}...”`;
+    if (orderedSteps.length === 0) return "Add steps to start receiving targeted hints.";
+    return `Focus on: ${orderedSteps[0].title}. Keep code aligned with the brief: “${currentAssignment.raw_instructions.slice(0, 140)}...”`;
   };
 
   const runCode = async () => {
@@ -203,16 +293,89 @@ function App() {
     setConsoleText("Cleared console. Runtime still loaded.");
   };
 
-  return (
-    <div className="page">
-      <header className="hero">
+  const requireAssignment = (target: Page) => {
+    if (!currentAssignment) {
+      setStatusMessage("Select an assignment first.");
+      setPage("dashboard");
+      return;
+    }
+    setPage(target);
+  };
+
+  const navButton = (label: string, target: Page) => (
+    <button
+      className={`nav-button ${page === target ? "active" : ""}`}
+      onClick={() =>
+        target === "dashboard"
+          ? setPage("dashboard")
+          : target === "login"
+          ? setPage("login")
+          : requireAssignment(target)
+      }
+      disabled={target !== "dashboard" && target !== "login" && !currentAssignment}
+    >
+      {label}
+    </button>
+  );
+
+  const renderLogin = () => (
+    <div className="auth-layout">
+      <div className="auth-card panel">
+        <p className="eyebrow">Code Lab</p>
+        <h2>{authMode === "login" ? "Log in" : "Create account"}</h2>
+        <p className="muted">
+          Access the guided lab workspace. We keep your assignments and step plans synced.
+        </p>
+        <form className="form" onSubmit={handleAuth}>
+          <label>
+            Email
+            <input
+              type="email"
+              required
+              value={authForm.email}
+              onChange={(e) =>
+                setAuthForm({ ...authForm, email: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              required
+              value={authForm.password}
+              onChange={(e) =>
+                setAuthForm({ ...authForm, password: e.target.value })
+              }
+            />
+          </label>
+          <div className="button-row">
+            <button type="submit" className="primary">
+              {authMode === "login" ? "Enter workspace" : "Start Code Lab"}
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() =>
+                setAuthMode(authMode === "login" ? "register" : "login")
+              }
+            >
+              {authMode === "login" ? "Need an account?" : "Already registered?"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  const renderDashboard = () => (
+    <>
+      <section className="hero">
         <div>
-          <p className="eyebrow">Code Lab / Guided Python practice</p>
-          <h1>Structure your assignments, not your weekends.</h1>
+          <p className="eyebrow">Dashboard</p>
+          <h1>Keep labs organized and scoped.</h1>
           <p className="lede">
-            Drop in a lab prompt, get a crisp plan, and code with an in-browser
-            Python runtime. Hints and analysis nudge you without handing over
-            the answers.
+            Draft assignments, see progress, and jump into a guided workspace. Plans stay deterministic and ready for analysis.
           </p>
           <div className="pill-row">
             <span className="pill">Step planner</span>
@@ -229,122 +392,68 @@ function App() {
             </p>
           </div>
         </div>
-      </header>
+      </section>
 
       <section className="grid">
         <div className="panel">
-          {!user ? (
-            <div>
-              <div className="panel-header">
-                <h2>{authMode === "login" ? "Log in" : "Create account"}</h2>
-                <button
-                  className="ghost"
-                  onClick={() =>
-                    setAuthMode(authMode === "login" ? "register" : "login")
-                  }
-                >
-                  {authMode === "login"
-                    ? "Need an account?"
-                    : "Already registered?"}
-                </button>
-              </div>
-              <form className="form" onSubmit={handleAuth}>
-                <label>
-                  Email
-                  <input
-                    type="email"
-                    required
-                    value={authForm.email}
-                    onChange={(e) =>
-                      setAuthForm({ ...authForm, email: e.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  Password
-                  <input
-                    type="password"
-                    required
-                    value={authForm.password}
-                    onChange={(e) =>
-                      setAuthForm({ ...authForm, password: e.target.value })
-                    }
-                  />
-                </label>
-                <button type="submit" className="primary">
-                  {authMode === "login" ? "Enter workspace" : "Start Code Lab"}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div>
-              <div className="panel-header">
-                <div>
-                  <p className="eyebrow">Welcome</p>
-                  <h2>{user.email}</h2>
-                </div>
-                <button className="ghost" onClick={() => setUser(null)}>
-                  Log out
-                </button>
-              </div>
-              <form className="form" onSubmit={handleAssignmentCreate}>
-                <h3>Draft a new assignment</h3>
-                <label>
-                  Title
-                  <input
-                    type="text"
-                    required
-                    value={assignmentForm.title}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        title: e.target.value,
-                      })
-                    }
-                    placeholder="Lab 01: Arrays & loops"
-                  />
-                </label>
-                <label>
-                  Instructions
-                  <textarea
-                    required
-                    value={assignmentForm.raw_instructions}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        raw_instructions: e.target.value,
-                      })
-                    }
-                    placeholder="Paste the full prompt, rubric, and any inputs/outputs."
-                  />
-                </label>
-                <label>
-                  Language
-                  <select
-                    value={assignmentForm.language}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        language: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="python">Python</option>
-                  </select>
-                </label>
-                <button type="submit" className="primary">
-                  Build plan
-                </button>
-              </form>
-            </div>
-          )}
+          <div className="panel-header">
+            <h3>Draft a new assignment</h3>
+          </div>
+          <form className="form" onSubmit={handleAssignmentCreate}>
+            <label>
+              Title
+              <input
+                type="text"
+                required
+                value={assignmentForm.title}
+                onChange={(e) =>
+                  setAssignmentForm({
+                    ...assignmentForm,
+                    title: e.target.value,
+                  })
+                }
+                placeholder="Lab 01: Arrays & loops"
+              />
+            </label>
+            <label>
+              Instructions
+              <textarea
+                required
+                value={assignmentForm.raw_instructions}
+                onChange={(e) =>
+                  setAssignmentForm({
+                    ...assignmentForm,
+                    raw_instructions: e.target.value,
+                  })
+                }
+                placeholder="Paste the full prompt, rubric, and any inputs/outputs."
+              />
+            </label>
+            <label>
+              Language
+              <select
+                value={assignmentForm.language}
+                onChange={(e) =>
+                  setAssignmentForm({
+                    ...assignmentForm,
+                    language: e.target.value,
+                  })
+                }
+              >
+                <option value="python">Python</option>
+              </select>
+            </label>
+            <button type="submit" className="primary">
+              Build plan
+            </button>
+          </form>
         </div>
 
         <div className="panel">
           <div className="panel-header">
             <div>
               <p className="eyebrow">Assignments</p>
-              <h2>Workspace queue</h2>
+              <h3>Your queue</h3>
             </div>
             <span className="chip">{assignments.length} active</span>
           </div>
@@ -373,7 +482,10 @@ function App() {
                 <div className="card-actions">
                   <button
                     className="ghost"
-                    onClick={() => setSelectedId(assignment.id)}
+                    onClick={() => {
+                      setSelectedId(assignment.id);
+                      setPage("assignment");
+                    }}
                   >
                     Open
                   </button>
@@ -389,52 +501,151 @@ function App() {
           </div>
         </div>
       </section>
+    </>
+  );
 
-      <section className="workspace">
+  const renderAssignment = () => (
+    <section className="page-shell">
+      <div className="breadcrumb">
+        <button className="nav-pill" onClick={() => setPage("dashboard")}>
+          ← Dashboard
+        </button>
+        <span className="muted">Assignment overview</span>
+      </div>
+      <div className="panel overview-grid">
+        <div>
+          <p className="eyebrow">Assignment</p>
+          <h2>{currentAssignment?.title || "Select an assignment"}</h2>
+          <p className="muted">
+            {currentAssignment?.raw_instructions ||
+              "Pick an assignment from your dashboard to see the summary and plan."}
+          </p>
+          <div className="meta-row">
+            <span className="chip">Language: {currentAssignment?.language || "python"}</span>
+            <span className="chip subtle">Steps: {orderedSteps.length}</span>
+          </div>
+          <div className="button-row top-gap">
+            <button className="ghost" onClick={() => requireAssignment("concepts")}>
+              View concepts
+            </button>
+            <button className="primary" onClick={() => requireAssignment("workspace")}>
+              Open coding workspace
+            </button>
+          </div>
+        </div>
+        <div className="instruction-box">
+          <h4>Step plan</h4>
+          <ol className="steps">
+            {orderedSteps.map((step) => (
+              <li key={step.order_index}>
+                <div className="step-index">{step.order_index + 1}</div>
+                <div>
+                  <p className="step-title">{step.title}</p>
+                  <p className="muted">{step.description}</p>
+                </div>
+              </li>
+            ))}
+            {orderedSteps.length === 0 && (
+              <li className="muted">No steps yet. Add an assignment.</li>
+            )}
+          </ol>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderConcepts = () => (
+    <section className="page-shell">
+      <div className="breadcrumb">
+        <button className="nav-pill" onClick={() => setPage("assignment")}>
+          ← Assignment
+        </button>
+        <span className="muted">Concept breakdown</span>
+      </div>
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">Concepts</p>
+            <h2>Mini-lessons for this prompt</h2>
+            <p className="muted">
+              Derived deterministically from your instructions so you can prep before coding.
+            </p>
+          </div>
+          <span className="chip subtle">{concepts.length} tags</span>
+        </div>
+        <div className="concept-grid">
+          {concepts.map((concept) => (
+            <article key={concept.tag} className="concept-card">
+              <span className="concept-tag">{concept.tag}</span>
+              <p>{concept.summary}</p>
+              <p className="muted small">
+                <strong>Example:</strong> {concept.example}
+              </p>
+              {concept.pitfalls && (
+                <p className="muted small">
+                  <strong>Watch for:</strong> {concept.pitfalls}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+        <div className="button-row top-gap">
+          <button className="ghost" onClick={() => setPage("assignment")}>
+            Back to overview
+          </button>
+          <button className="primary" onClick={() => setPage("workspace")}>
+            Jump into workspace
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderWorkspace = () => (
+    <section className="page-shell">
+      <div className="breadcrumb">
+        <button className="nav-pill" onClick={() => setPage("assignment")}>
+          ← Assignment overview
+        </button>
+        <span className="muted">Coding workspace</span>
+      </div>
+      <div className="workspace-layout">
         <div className="panel">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Plan</p>
-              <h2>{currentAssignment?.title || "Choose an assignment"}</h2>
+              <p className="eyebrow">Instructions</p>
+              <h3>{currentAssignment?.title || "Select an assignment"}</h3>
             </div>
             <span className="chip subtle">
               {currentAssignment ? currentAssignment.language : "python"}
             </span>
           </div>
-          <div className="plan-grid">
-            <div className="plan">
-              <h4>Instructions</h4>
-              <p className="muted">
-                {currentAssignment?.raw_instructions ||
-                  "Paste the full prompt to generate a deterministic step plan. We keep it concise—no chat bubbles."}
-              </p>
-              <h4>Steps</h4>
-              <ol className="steps">
-                {orderedSteps.map((step) => (
-                  <li key={step.order_index}>
-                    <div className="step-index">{step.order_index + 1}</div>
-                    <div>
-                      <p className="step-title">{step.title}</p>
-                      <p className="muted">{step.description}</p>
-                    </div>
-                  </li>
-                ))}
-                {(!currentAssignment || orderedSteps.length === 0) && (
-                  <li className="muted">No steps yet. Add an assignment.</li>
-                )}
-              </ol>
-            </div>
-            <div className="side-card">
-              <h4>Hints & feedback</h4>
-              <p className="muted">{generateHint()}</p>
+          <p className="muted">
+            {currentAssignment?.raw_instructions ||
+              "Pick an assignment to view its prompt, steps, and hints."}
+          </p>
+          <h4>Plan</h4>
+          <ol className="steps">
+            {orderedSteps.map((step) => (
+              <li key={step.order_index}>
+                <div className="step-index">{step.order_index + 1}</div>
+                <div>
+                  <p className="step-title">{step.title}</p>
+                  <p className="muted">{step.description}</p>
+                </div>
+              </li>
+            ))}
+            {orderedSteps.length === 0 && (
+              <li className="muted">No steps yet. Add an assignment.</li>
+            )}
+          </ol>
+          <div className="side-card">
+            <h4>Hint</h4>
+            <p className="muted">{generateHint()}</p>
+            <div className="button-row top-gap">
               <button className="ghost" onClick={() => setStatusMessage(generateHint())}>
                 Refresh hint
               </button>
-              <div className="divider" />
-              <p className="muted small">
-                Feedback is deterministic and based on your steps and prompt; no
-                full solutions are revealed.
-              </p>
             </div>
           </div>
         </div>
@@ -466,8 +677,54 @@ function App() {
             </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  );
 
+  const renderPage = () => {
+    switch (page) {
+      case "login":
+        return renderLogin();
+      case "dashboard":
+        return renderDashboard();
+      case "assignment":
+        return renderAssignment();
+      case "concepts":
+        return renderConcepts();
+      case "workspace":
+        return renderWorkspace();
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="page">
+      <header className="top-bar">
+        <div className="brand" onClick={() => setPage("dashboard")}>
+          <span className="logo-dot" /> Code Lab
+        </div>
+        <div className="nav-links">
+          {navButton("Login", "login")}
+          {navButton("Dashboard", "dashboard")}
+          {navButton("Assignment", "assignment")}
+          {navButton("Concepts", "concepts")}
+          {navButton("Workspace", "workspace")}
+        </div>
+        <div className="user-chip">
+          {user ? (
+            <>
+              <span className="chip subtle">{user.email}</span>
+              <button className="ghost" onClick={() => setUser(null)}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <span className="muted small">Not signed in</span>
+          )}
+        </div>
+      </header>
+      <main>{renderPage()}</main>
       {statusMessage && <div className="toast">{statusMessage}</div>}
     </div>
   );

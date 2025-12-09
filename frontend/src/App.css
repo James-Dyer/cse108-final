@@ -18,7 +18,61 @@
     radial-gradient(circle at 90% 10%, rgba(255, 184, 108, 0.18), transparent 20%),
     linear-gradient(135deg, #05080f 0%, #0b1020 60%, #05080f 100%);
   min-height: 100vh;
-  padding: 32px 40px 64px;
+  padding: 18px 32px 64px;
+}
+
+.top-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+}
+
+.logo-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 0 6px rgba(23, 195, 178, 0.14);
+}
+
+.nav-links {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.nav-button {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.nav-button.active {
+  color: var(--text);
+  border-color: rgba(23, 195, 178, 0.5);
+  box-shadow: 0 10px 30px rgba(23, 195, 178, 0.15);
+}
+
+.user-chip {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .hero {
@@ -26,7 +80,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
 }
 
 .eyebrow {
@@ -198,6 +252,12 @@ textarea {
   color: #ffb3b3;
 }
 
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .assignment-list {
   display: flex;
   flex-direction: column;
@@ -250,31 +310,61 @@ textarea {
   color: var(--muted);
 }
 
-.workspace {
+.auth-layout {
   display: grid;
-  grid-template-columns: 1.1fr 1.2fr;
+  place-items: center;
+  min-height: 70vh;
+}
+
+.auth-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.page-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-pill {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-@media (max-width: 1040px) {
-  .hero {
-    flex-direction: column;
-  }
-  .workspace {
+@media (max-width: 900px) {
+  .overview-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.instruction-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
 }
 
 .plan-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 12px;
-}
-
-@media (max-width: 800px) {
-  .plan-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .steps {
@@ -329,6 +419,21 @@ textarea {
   font-size: 13px;
 }
 
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 16px;
+}
+
+@media (max-width: 1040px) {
+  .hero {
+    flex-direction: column;
+  }
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .code-panel {
   display: flex;
   flex-direction: column;
@@ -354,6 +459,7 @@ textarea {
   border-radius: 14px;
   background: #0c101c;
   border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .console {
@@ -378,11 +484,6 @@ textarea {
   color: #d0ffe9;
 }
 
-.button-row {
-  display: flex;
-  gap: 8px;
-}
-
 .workspace .panel + .panel {
   margin-top: 12px;
 }
@@ -397,4 +498,31 @@ textarea {
   padding: 12px 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   color: var(--text);
+}
+
+.concept-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.concept-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.concept-tag {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(23, 195, 178, 0.12);
+  border: 1px solid rgba(23, 195, 178, 0.3);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.top-gap {
+  margin-top: 8px;
 }
