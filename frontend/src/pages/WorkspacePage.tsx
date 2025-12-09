@@ -10,9 +10,20 @@ type Props = {
   onNotify: (msg: string) => void;
 };
 
+const DEFAULT_CODE = `# Write Python here
+
+def main():
+    sample = [1, 2, 3]
+    doubled = [x * 2 for x in sample]
+    print("Doubled values:", doubled)
+
+if __name__ == "__main__":
+    main()
+`;
+
 export function WorkspacePage({ onNotify }: Props) {
   const { assignmentId } = useParams();
-  const { getById } = useAssignments();
+  const { getById, updateCode } = useAssignments();
   const [pyodideStatus, setPyodideStatus] = useState<
     "idle" | "loading" | "ready" | "error"
   >("idle");
@@ -22,9 +33,11 @@ export function WorkspacePage({ onNotify }: Props) {
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [codeHeight, setCodeHeight] = useState(380);
   const [isNarrow, setIsNarrow] = useState(false);
-  const [code, setCode] = useState(
-    `# Write Python here\n\ndef main():\n    sample = [1, 2, 3]\n    doubled = [x * 2 for x in sample]\n    print("Doubled values:", doubled)\n\nif __name__ == "__main__":\n    main()\n`
-  );
+  const [code, setCode] = useState(DEFAULT_CODE);
+  const [lastSavedCode, setLastSavedCode] = useState(DEFAULT_CODE);
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "dirty" | "saving" | "saved" | "error"
+  >("idle");
   const [consoleText, setConsoleText] = useState("Runtime warming up...");
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const codeStackRef = useRef<HTMLDivElement | null>(null);
@@ -40,6 +53,14 @@ export function WorkspacePage({ onNotify }: Props) {
     if (!assignment) return [];
     return [...assignment.steps].sort((a, b) => a.order_index - b.order_index);
   }, [assignment]);
+
+  useEffect(() => {
+    if (!assignment) return;
+    const initialCode = assignment.code ?? DEFAULT_CODE;
+    setCode(initialCode);
+    setLastSavedCode(initialCode);
+    setSaveStatus("saved");
+  }, [assignment?.id, assignment?.code]);
 
   useEffect(() => {
     if (pyodideStatus !== "idle") return;
@@ -65,6 +86,32 @@ export function WorkspacePage({ onNotify }: Props) {
     };
     document.body.appendChild(script);
   }, [pyodideStatus]);
+
+  useEffect(() => {
+    if (!assignment) return;
+    if (code === lastSavedCode) {
+      if (saveStatus !== "saved" && saveStatus !== "idle") {
+        setSaveStatus("saved");
+      }
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      if (code === lastSavedCode) return;
+      setSaveStatus("saving");
+      updateCode(assignment.id, code)
+        .then(() => {
+          setLastSavedCode(code);
+          setSaveStatus("saved");
+          window.setTimeout(() => setSaveStatus("idle"), 1200);
+        })
+        .catch((error: any) => {
+          console.error(error);
+          setSaveStatus("error");
+          onNotify("Auto-save failed. Check your connection and try again.");
+        });
+    }, 1500);
+    return () => window.clearTimeout(timeout);
+  }, [assignment?.id, code, lastSavedCode, updateCode, onNotify, saveStatus]);
 
   useEffect(() => {
     if (!isHintOpen) return;
@@ -260,19 +307,66 @@ export function WorkspacePage({ onNotify }: Props) {
         >
           <div className="panel window-panel code-panel">
             <div className="window-header">
-              <div className="window-title">
-                <span className="window-icon code-icon" aria-hidden="true">
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                    <path
-                      d="M8 5 4 10l4 5M12 5l4 5-4 5"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                <p className="window-title-text">Code</p>
+              <div className="window-title-row">
+                <div className="window-title">
+                  <span className="window-icon code-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                      <path
+                        d="M8 5 4 10l4 5M12 5l4 5-4 5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <p className="window-title-text">Code</p>
+                </div>
+                <div className={`autosave-pill ${saveStatus}`}>
+                  <span className="autosave-icon" aria-hidden="true">
+                    {saveStatus === "saving" ? (
+                      <span className="autosave-spinner" />
+                    ) : saveStatus === "error" ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M12 17h.01M12 9v4"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : saveStatus === "dirty" ? (
+                      <span className="autosave-dot" />
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                        <path
+                          d="M16.25 5.75 8.5 13.5 5.75 10.75"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="autosave-label">
+                    {saveStatus === "saving"
+                      ? "Saving..."
+                      : saveStatus === "dirty"
+                        ? "Unsaved changes"
+                        : saveStatus === "error"
+                          ? "Save failed"
+                          : "Saved"}
+                  </span>
+                </div>
               </div>
               <div className="button-row">
                 <button className="ghost" onClick={resetRuntime}>
@@ -290,7 +384,12 @@ export function WorkspacePage({ onNotify }: Props) {
                   theme={oneDark}
                   extensions={[python()]}
                   basicSetup={{ lineNumbers: true, highlightActiveLine: true }}
-                  onChange={(value) => setCode(value)}
+                  onChange={(value) => {
+                    setCode(value);
+                    setSaveStatus(
+                      value === lastSavedCode ? "saved" : "dirty"
+                    );
+                  }}
                   height="100%"
                   style={{ height: "100%" }}
                 />

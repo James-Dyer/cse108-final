@@ -208,12 +208,107 @@
   flex-shrink: 0;
 }
 
+.window-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .window-icon {
   width: 26px;
   height: 26px;
   display: grid;
   place-items: center;
   color: #ffffff;
+}
+
+.autosave-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+
+.autosave-pill .autosave-icon {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+
+.autosave-pill.saving {
+  color: var(--accent);
+  border-color: rgba(23, 195, 178, 0.45);
+  background: rgba(23, 195, 178, 0.08);
+}
+
+.autosave-pill.saved,
+.autosave-pill.idle {
+  color: #7ad97f;
+  border-color: rgba(122, 217, 127, 0.5);
+  background: rgba(122, 217, 127, 0.08);
+}
+
+.autosave-pill.dirty {
+  color: var(--accent-2);
+  border-color: rgba(255, 184, 108, 0.5);
+  background: rgba(255, 184, 108, 0.08);
+}
+
+.autosave-pill.error {
+  color: #ff7b7b;
+  border-color: rgba(255, 123, 123, 0.6);
+  background: rgba(255, 123, 123, 0.08);
+}
+
+.autosave-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: autosave-spin 0.8s linear infinite;
+}
+
+.autosave-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
+  animation: autosave-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes autosave-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes autosave-pulse {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.25);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
 
 .window-body {

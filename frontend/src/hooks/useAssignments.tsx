@@ -22,6 +22,7 @@ type Assignment = {
   title: string;
   raw_instructions: string;
   language: string;
+  code?: string;
   steps: Step[];
 };
 
@@ -31,6 +32,7 @@ type AssignmentsContextValue = {
   refresh: () => Promise<void>;
   create: (data: { title: string; raw_instructions: string }) => Promise<Assignment>;
   remove: (id: number) => Promise<void>;
+  updateCode: (id: number, code: string) => Promise<Assignment>;
   getById: (id: number) => Assignment | null;
 };
 
@@ -86,11 +88,27 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
     setAssignments((prev) => prev.filter((a) => a.id !== id));
   };
 
+  const updateCode = async (id: number, code: string) => {
+    if (!token) throw new Error("unauthorized");
+    const resp = await apiFetch<{ assignment: Assignment }>(
+      `/api/assignments/${id}/code`,
+      token,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ code }),
+      }
+    );
+    setAssignments((prev) =>
+      prev.map((assignment) => (assignment.id === id ? resp.assignment : assignment))
+    );
+    return resp.assignment;
+  };
+
   const getById = (id: number) =>
     assignments.find((a) => a.id === id) || null;
 
   const value = useMemo(
-    () => ({ assignments, loading, refresh, create, remove, getById }),
+    () => ({ assignments, loading, refresh, create, remove, updateCode, getById }),
     [assignments, loading]
   );
 

@@ -8,6 +8,7 @@ from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy import inspect, text
 import jwt
 
 
@@ -24,6 +25,17 @@ env_origins = os.environ.get("ALLOWED_ORIGINS", "")
 ALLOWED_ORIGINS = [
     origin.strip() for origin in env_origins.split(",") if origin.strip()
 ] or DEFAULT_ALLOWED_ORIGINS
+
+DEFAULT_SAMPLE_CODE = """# Write Python here
+
+def main():
+    sample = [1, 2, 3]
+    doubled = [x * 2 for x in sample]
+    print("Doubled values:", doubled)
+
+if __name__ == "__main__":
+    main()
+"""
 
 db_path = os.path.join(os.path.dirname(__file__), "code_lab.db")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
@@ -101,6 +113,7 @@ class Assignment(db.Model):
     title = db.Column(db.String(255), nullable=False)
     raw_instructions = db.Column(db.Text, nullable=False)
     language = db.Column(db.String(64), default="python", nullable=False)
+    code = db.Column(db.Text, default="", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -117,12 +130,13 @@ class Assignment(db.Model):
         payload = {
             "id": self.id,
             "user_id": self.user_id,
-            "title": self.title,
-            "raw_instructions": self.raw_instructions,
-            "language": self.language,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-        }
+        "title": self.title,
+        "raw_instructions": self.raw_instructions,
+        "language": self.language,
+        "code": self.code,
+        "created_at": self.created_at.isoformat(),
+        "updated_at": self.updated_at.isoformat(),
+    }
         if include_steps:
             payload["steps"] = [step.to_dict() for step in self.steps]
         return payload
@@ -305,6 +319,7 @@ def create_assignment():
         title=title,
         raw_instructions=instructions,
         language=language or "python",
+        code=DEFAULT_SAMPLE_CODE,
     )
 
     for idx, step in enumerate(build_step_plan(instructions, assignment.language)):
@@ -401,8 +416,45 @@ def replace_steps(assignment_id: int):
     return jsonify({"assignment": serialize_assignment(assignment)})
 
 
+@app.route("/api/assignments/<int:assignment_id>/code", methods=["PATCH"])
+@require_auth
+def update_assignment_code(assignment_id: int):
+    assignment = get_assignment_or_404(assignment_id)
+    if not assignment or assignment.user_id != g.current_user.id:
+        return jsonify({"error": "Assignment not found."}), 404
+
+    data = request.get_json() or {}
+    if "code" not in data:
+        return jsonify({"error": "Code content is required."}), 400
+
+    code = data.get("code")
+    if not isinstance(code, str):
+        return jsonify({"error": "Code must be a string."}), 400
+    if len(code) > 200000:
+        return jsonify({"error": "Code is too long for storage."}), 400
+
+    assignment.code = code
+    db.session.commit()
+    return jsonify({"assignment": serialize_assignment(assignment)})
+
+
+def ensure_assignment_schema():
+    inspector = inspect(db.engine)
+    columns = [col["name"] for col in inspector.get_columns("assignments")]
+    if "code" not in columns:
+        with db.engine.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE assignments ADD COLUMN code TEXT DEFAULT ''")
+            )
+            conn.execute(
+                text("UPDATE assignments SET code = :default_code"),
+                {"default_code": DEFAULT_SAMPLE_CODE},
+            )
+
+
 with app.app_context():
     db.create_all()
+    ensure_assignment_schema()
 
 
 if __name__ == "__main__":
