@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useAssignments } from "../hooks/useAssignments";
 import { StepsList } from "../components/StepsList";
+import { AssignmentProgressNav } from "../components/AssignmentProgressNav";
 
 type Props = {
   onNotify: (msg: string) => void;
@@ -233,6 +234,13 @@ export function WorkspacePage({ onNotify }: Props) {
           ← Dashboard
         </Link>
         <span className="muted">Coding workspace</span>
+        <div className="progress-inline">
+          <AssignmentProgressNav
+            assignmentId={assignment.id}
+            currentStage="code"
+            maxStageUnlocked={assignment.max_stage_unlocked ?? 0}
+          />
+        </div>
       </div>
       <div
         className="workspace-layout"

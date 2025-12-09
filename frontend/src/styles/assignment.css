@@ -207,3 +207,102 @@
 .top-gap {
   margin-top: 8px;
 }
+
+.assignment-progress {
+  width: 400px;
+  max-width: 100%;
+  min-width: 320px;
+  margin: 0 auto 6px;
+  padding: 8px 6px 6px;
+}
+
+.progress-inline {
+  position: absolute;
+  left: 50%;
+  top: 0%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.progress-inline .assignment-progress {
+  margin: 0;
+  pointer-events: auto;
+}
+
+.assignment-progress .RSPBprogressBar {
+  background: linear-gradient(90deg, rgba(43, 107, 255, 0.12), rgba(255, 157, 87, 0.12));
+  border-radius: 12px;
+  height: 4px;
+  transform: translateY(17px);
+}
+
+.assignment-progress .RSPBprogressBar .RSPBprogression {
+  border-radius: 12px;
+  background: linear-gradient(90deg, #2b6bff, #ff9d57);
+  box-shadow: 0 0 12px rgba(255, 157, 87, 0.25), 0 0 18px rgba(43, 107, 255, 0.2);
+}
+
+.assignment-progress .RSPBstep {
+  top: calc(50% - 17px);
+  transform: translate(-50%, -50%);
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #bac8e0;
+  transform: none;
+}
+
+.progress-step.locked {
+  cursor: not-allowed;
+  color: #61708a;
+}
+
+.progress-step .progress-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #0b1220;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #0b1220;
+  transition: transform 120ms ease, border 120ms ease, background 160ms ease,
+    color 160ms ease, box-shadow 200ms ease;
+}
+
+.progress-step.accomplished .progress-circle {
+  background: radial-gradient(circle at 30% 30%, rgba(43, 107, 255, 0.4), transparent),
+    radial-gradient(circle at 70% 70%, rgba(255, 157, 87, 0.35), transparent),
+    #0b1220;
+  color: #fdf6e3;
+  border-color: rgba(25, 195, 178, 1);
+  box-shadow: 0 0 0 1px rgba(255, 157, 87, 0.25), 0 0 12px rgba(43, 107, 255, 0.28);
+}
+
+.progress-step.active .progress-circle {
+  box-shadow: 0 0 0 6px rgba(43, 107, 255, 0.16), 0 0 12px rgba(255, 157, 87, 0.24),
+    0 0 8px rgba(43, 107, 255, 0.18) inset;
+}
+
+.progress-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: color 160ms ease;
+}
+
+.progress-step.accomplished .progress-label,
+.progress-step.active .progress-label {
+  color: #f7dac0;
+}

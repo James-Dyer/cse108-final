@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { useAssignments } from "../hooks/useAssignments";
+import { AssignmentProgressNav } from "../components/AssignmentProgressNav";
 
 type Props = {
   onNotify: (msg: string) => void;
@@ -103,6 +104,13 @@ export function ConceptsPage({ onNotify }: Props) {
           ← Dashboard
         </Link>
         <span className="muted">Concept breakdown</span>
+        <div className="progress-inline">
+          <AssignmentProgressNav
+            assignmentId={assignment.id}
+            currentStage="concepts"
+            maxStageUnlocked={assignment.max_stage_unlocked ?? 0}
+          />
+        </div>
       </div>
       <div className="panel">
         <div className="panel-header concept-header">
