@@ -1,0 +1,33 @@
+.grid.dashboard-grid {
+  grid-template-columns: 1.1fr 1fr;
+}
+
+@media (max-width: 900px) {
+  .grid.dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assignment-card {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 14px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+.assignment-card.active {
+  border-color: rgba(23, 195, 178, 0.4);
+  box-shadow: 0 10px 30px rgba(23, 195, 178, 0.15);
+}
+
+.activity-card {
+  min-height: 160px;
+}

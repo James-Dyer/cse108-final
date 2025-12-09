@@ -1,0 +1,112 @@
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { apiFetch } from "../lib/api";
+import { useAuth } from "./useAuth";
+
+type Step = {
+  id?: number;
+  title: string;
+  description: string;
+  order_index: number;
+};
+
+type Assignment = {
+  id: number;
+  user_id: number;
+  title: string;
+  raw_instructions: string;
+  language: string;
+  steps: Step[];
+};
+
+type AssignmentsContextValue = {
+  assignments: Assignment[];
+  loading: boolean;
+  refresh: () => Promise<void>;
+  create: (data: { title: string; raw_instructions: string }) => Promise<Assignment>;
+  remove: (id: number) => Promise<void>;
+  getById: (id: number) => Assignment | null;
+};
+
+const AssignmentsContext = createContext<AssignmentsContextValue | undefined>(
+  undefined
+);
+
+export function AssignmentsProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth();
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await apiFetch<{ assignments: Assignment[] }>(
+        "/api/assignments",
+        token
+      );
+      setAssignments(data.assignments || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) {
+      setAssignments([]);
+      return;
+    }
+    refresh();
+  }, [token]);
+
+  const create = async (data: { title: string; raw_instructions: string }) => {
+    if (!token) throw new Error("unauthorized");
+    const payload = { ...data, language: "python" };
+    const resp = await apiFetch<{ assignment: Assignment }>(
+      "/api/assignments",
+      token,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+    setAssignments((prev) => [resp.assignment, ...prev]);
+    return resp.assignment;
+  };
+
+  const remove = async (id: number) => {
+    if (!token) throw new Error("unauthorized");
+    await apiFetch(`/api/assignments/${id}`, token, { method: "DELETE" });
+    setAssignments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const getById = (id: number) =>
+    assignments.find((a) => a.id === id) || null;
+
+  const value = useMemo(
+    () => ({ assignments, loading, refresh, create, remove, getById }),
+    [assignments, loading]
+  );
+
+  return (
+    <AssignmentsContext.Provider value={value}>
+      {children}
+    </AssignmentsContext.Provider>
+  );
+}
+
+export function useAssignments() {
+  const ctx = useContext(AssignmentsContext);
+  if (!ctx) {
+    throw new Error("useAssignments must be used within AssignmentsProvider");
+  }
+  return ctx;
+}
+
+export type { Assignment, Step };

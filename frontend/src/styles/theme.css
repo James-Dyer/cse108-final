@@ -1,0 +1,13 @@
+:root {
+  --bg: #05080f;
+  --panel: #0c1424;
+  --panel-strong: #0f1c33;
+  --text: #e9eef5;
+  --muted: #9fb4cc;
+  --accent: #17c3b2;
+  --accent-2: #ffb86c;
+  --border: rgba(255, 255, 255, 0.08);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono",
+    Menlo, monospace;
+  --sans: "Space Grotesk", "Manrope", "Segoe UI", sans-serif;
+}

@@ -1,0 +1,68 @@
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 16px;
+}
+
+@media (max-width: 1040px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.side-card {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.code-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 12px;
+}
+
+@media (max-width: 960px) {
+  .editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor textarea {
+  min-height: 320px;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.4;
+  border-radius: 14px;
+  background: #0c101c;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.console {
+  background: #05080f;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.console-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.console pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  color: #d0ffe9;
+}
