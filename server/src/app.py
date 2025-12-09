@@ -1,24 +1,35 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from functools import wraps
 import os
 from typing import List, Optional
 
-from flask import Flask, jsonify, request
+from dotenv import load_dotenv
+from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
+import jwt
 
+
+load_dotenv()
 
 app = Flask(__name__)
-ALLOWED_ORIGINS = [
+DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5173/",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5173/",
 ]
+env_origins = os.environ.get("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS = [
+    origin.strip() for origin in env_origins.split(",") if origin.strip()
+] or DEFAULT_ALLOWED_ORIGINS
 
 db_path = os.path.join(os.path.dirname(__file__), "code_lab.db")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JWT_SECRET"] = os.environ.get("JWT_SECRET", "dev-secret-change-me")
+app.config["JWT_TTL_MINUTES"] = int(os.environ.get("JWT_TTL_MINUTES", "1440"))
 
 db = SQLAlchemy(app)
 CORS(
@@ -172,6 +183,46 @@ def serialize_assignment(assignment: Assignment) -> dict:
     return assignment.to_dict(include_steps=True)
 
 
+def generate_token(user: User) -> str:
+    payload = {
+        "sub": str(user.id),
+        "email": user.email,
+        "exp": datetime.utcnow()
+        + timedelta(minutes=app.config["JWT_TTL_MINUTES"]),
+    }
+    return jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
+
+
+def require_auth(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": "Authorization header missing"}), 401
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = jwt.decode(
+                token, app.config["JWT_SECRET"], algorithms=["HS256"]
+            )
+            user_id = payload.get("sub")
+            try:
+                user_id = int(user_id)
+            except (TypeError, ValueError):
+                raise jwt.InvalidTokenError("Invalid subject")
+
+            user = User.query.filter_by(id=user_id).first()
+            if not user:
+                raise jwt.InvalidTokenError("User not found")
+            g.current_user = user
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Token expired"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": "Invalid token"}), 401
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 @app.route("/api/health", methods=["GET"])
 def healthcheck():
     return jsonify({"status": "ok"})
@@ -193,7 +244,8 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    return jsonify({"user": user.to_dict()})
+    token = generate_token(user)
+    return jsonify({"user": user.to_dict(), "token": token})
 
 
 @app.route("/api/auth/login", methods=["POST"])
@@ -206,37 +258,45 @@ def login():
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid credentials."}), 401
 
-    return jsonify({"user": user.to_dict()})
+    token = generate_token(user)
+    return jsonify({"user": user.to_dict(), "token": token})
+
+
+@app.route("/api/auth/me", methods=["GET"])
+@require_auth
+def current_user():
+    return jsonify({"user": g.current_user.to_dict()})
 
 
 @app.route("/api/assignments", methods=["GET"])
+@require_auth
 def list_assignments():
-    user_id = request.args.get("user_id", type=int)
-    query = Assignment.query
-    if user_id:
-        query = query.filter_by(user_id=user_id)
-    assignments = query.order_by(Assignment.created_at.desc()).all()
+    assignments = (
+        Assignment.query.filter_by(user_id=g.current_user.id)
+        .order_by(Assignment.created_at.desc())
+        .all()
+    )
     return jsonify(
         {"assignments": [a.to_dict(include_steps=True) for a in assignments]}
     )
 
 
 @app.route("/api/assignments", methods=["POST"])
+@require_auth
 def create_assignment():
     data = request.get_json() or {}
-    user_id = data.get("user_id")
     title = (data.get("title") or "").strip()
     instructions = (data.get("raw_instructions") or "").strip()
     language = (data.get("language") or "python").strip().lower()
 
-    if not user_id or not title or not instructions:
+    if not title or not instructions:
         return (
-            jsonify({"error": "user_id, title, and raw_instructions are required."}),
+            jsonify({"error": "title and raw_instructions are required."}),
             400,
         )
 
     assignment = Assignment(
-        user_id=user_id,
+        user_id=g.current_user.id,
         title=title,
         raw_instructions=instructions,
         language=language or "python",
@@ -262,17 +322,19 @@ def get_assignment_or_404(assignment_id: int) -> Optional[Assignment]:
 
 
 @app.route("/api/assignments/<int:assignment_id>", methods=["GET"])
+@require_auth
 def retrieve_assignment(assignment_id: int):
     assignment = get_assignment_or_404(assignment_id)
-    if not assignment:
+    if not assignment or assignment.user_id != g.current_user.id:
         return jsonify({"error": "Assignment not found."}), 404
     return jsonify({"assignment": serialize_assignment(assignment)})
 
 
 @app.route("/api/assignments/<int:assignment_id>", methods=["DELETE"])
+@require_auth
 def delete_assignment(assignment_id: int):
     assignment = get_assignment_or_404(assignment_id)
-    if not assignment:
+    if not assignment or assignment.user_id != g.current_user.id:
         return jsonify({"error": "Assignment not found."}), 404
 
     db.session.delete(assignment)
@@ -281,9 +343,10 @@ def delete_assignment(assignment_id: int):
 
 
 @app.route("/api/assignments/<int:assignment_id>/steps", methods=["POST"])
+@require_auth
 def replace_steps(assignment_id: int):
     assignment = get_assignment_or_404(assignment_id)
-    if not assignment:
+    if not assignment or assignment.user_id != g.current_user.id:
         return jsonify({"error": "Assignment not found."}), 404
 
     data = request.get_json() or {}

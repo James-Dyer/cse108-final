@@ -108,6 +108,10 @@ function App() {
   const location = useLocation();
 
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("cl_token") : null
+  );
+  const [authChecking, setAuthChecking] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -131,11 +135,19 @@ function App() {
       ...init,
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init?.headers || {}),
       },
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem("cl_token");
+        localStorage.removeItem("cl_user");
+        navigate("/login", { replace: true });
+      }
       const raw = await response.text();
       try {
         const parsed = JSON.parse(raw);
@@ -174,23 +186,56 @@ function App() {
   }, [pyodideStatus]);
 
   useEffect(() => {
-    if (!user && location.pathname !== "/login") {
+    if (!token && location.pathname !== "/login") {
       navigate("/login", { replace: true });
     }
     if (user && location.pathname === "/login") {
       navigate("/dashboard", { replace: true });
     }
-  }, [user, location.pathname, navigate]);
+  }, [user, token, location.pathname, navigate]);
 
   useEffect(() => {
-    if (!user) return;
-    loadAssignments();
+    const savedUser =
+      typeof window !== "undefined" ? localStorage.getItem("cl_user") : null;
+    if (savedUser && !user) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem("cl_user");
+      }
+    }
   }, [user]);
 
+  useEffect(() => {
+    const fetchMe = async () => {
+      if (!token || user || authChecking) return;
+      setAuthChecking(true);
+      try {
+        const data = await apiFetch("/api/auth/me");
+        setUser(data.user);
+        localStorage.setItem("cl_user", JSON.stringify(data.user));
+      } catch (error) {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem("cl_token");
+        localStorage.removeItem("cl_user");
+        navigate("/login", { replace: true });
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    fetchMe();
+  }, [token, user, authChecking, navigate]);
+
+  useEffect(() => {
+    if (!user || !token) return;
+    loadAssignments();
+  }, [user, token]);
+
   const loadAssignments = async () => {
-    if (!user) return;
+    if (!user || !token) return;
     try {
-      const data = await apiFetch(`/api/assignments?user_id=${user.id}`);
+      const data = await apiFetch(`/api/assignments`);
       setAssignments(data.assignments || []);
     } catch (error) {
       setStatusMessage("Unable to load assignments yet.");
@@ -208,6 +253,9 @@ function App() {
         body: JSON.stringify(authForm),
       });
       setUser(data.user);
+      setToken(data.token);
+      localStorage.setItem("cl_token", data.token);
+      localStorage.setItem("cl_user", JSON.stringify(data.user));
       setStatusMessage(
         route === "login" ? "Welcome back to Code Lab." : "Account created."
       );
@@ -219,7 +267,7 @@ function App() {
 
   const handleAssignmentCreate = async (event: FormEvent) => {
     event.preventDefault();
-    if (!user) {
+    if (!user || !token) {
       setStatusMessage("Log in first.");
       navigate("/login");
       return;
@@ -227,7 +275,6 @@ function App() {
     try {
       const payload = {
         ...assignmentForm,
-        user_id: user.id,
       };
       const data = await apiFetch("/api/assignments", {
         method: "POST",
@@ -684,8 +731,18 @@ function App() {
     );
   };
 
-  const protectedRoute = (element: ReactNode) =>
-    user ? element : <Navigate to="/login" replace />;
+  const isAuthed = Boolean(user && token);
+
+  const protectedRoute = (element: ReactNode) => {
+    if (authChecking) {
+      return (
+        <div className="panel muted" style={{ marginTop: 20 }}>
+          Checking session...
+        </div>
+      );
+    }
+    return isAuthed ? element : <Navigate to="/login" replace />;
+  };
 
   return (
     <div className="page">
@@ -718,6 +775,10 @@ function App() {
                   className="ghost"
                   onClick={() => {
                     setUser(null);
+                    setToken(null);
+                    setAssignments([]);
+                    localStorage.removeItem("cl_token");
+                    localStorage.removeItem("cl_user");
                     navigate("/login");
                   }}
                 >
