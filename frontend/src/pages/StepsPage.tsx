@@ -44,7 +44,7 @@ export function StepsPage({ onNotify }: Props) {
           </div>
           <span className="chip subtle">{orderedSteps.length} steps</span>
         </div>
-        <StepsList steps={orderedSteps} />
+        <StepsList steps={orderedSteps} layout="flowchart" />
         <div className="button-row top-gap">
           <Link className="ghost" to={`/assignments/${assignment.id}/concepts`}>
             Back to concepts

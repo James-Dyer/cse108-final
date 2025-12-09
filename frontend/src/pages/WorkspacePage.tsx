@@ -14,6 +14,7 @@ export function WorkspacePage({ onNotify }: Props) {
     "idle" | "loading" | "ready" | "error"
   >("idle");
   const [pyodide, setPyodide] = useState<any>(null);
+  const [isHintOpen, setIsHintOpen] = useState(false);
   const [code, setCode] = useState(
     `# Write Python here\n\ndef main():\n    sample = [1, 2, 3]\n    doubled = [x * 2 for x in sample]\n    print("Doubled values:", doubled)\n\nif __name__ == "__main__":\n    main()\n`
   );
@@ -56,11 +57,26 @@ export function WorkspacePage({ onNotify }: Props) {
     document.body.appendChild(script);
   }, [pyodideStatus]);
 
+  useEffect(() => {
+    if (!isHintOpen) return;
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsHintOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isHintOpen]);
+
   const generateHint = () => {
     if (!assignment) return "Pick or create an assignment to get hints.";
     if (orderedSteps.length === 0) return "Add steps to start receiving targeted hints.";
     return `Focus on: ${orderedSteps[0].title}. Keep code aligned with the brief: “${assignment.raw_instructions.slice(0, 140)}...”`;
   };
+
+  const hintText = useMemo(() => generateHint(), [assignment, orderedSteps]);
 
   const runCode = async () => {
     if (!pyodide || pyodideStatus !== "ready") {
@@ -99,29 +115,27 @@ export function WorkspacePage({ onNotify }: Props) {
               <h3>Assignment instructions</h3>
               <p className="muted">{assignment.title}</p>
             </div>
-            <span className="chip subtle">python</span>
+            <button
+              className="ghost hint-button"
+              onClick={() => setIsHintOpen(true)}
+              aria-label="Show hint"
+            >
+              <span className="hint-icon" aria-hidden="true">?</span>
+              <span>Hint</span>
+            </button>
           </div>
           <p className="muted">
             {assignment.raw_instructions ||
               "Pick an assignment to view its prompt, steps, and hints."}
           </p>
           <h4>Plan</h4>
-          <StepsList steps={orderedSteps} />
-          <div className="side-card">
-            <h4>Hint</h4>
-            <p className="muted">{generateHint()}</p>
-            <div className="button-row top-gap">
-              <button className="ghost" onClick={() => onNotify(generateHint())}>
-                Refresh hint
-              </button>
-            </div>
-          </div>
+          <StepsList steps={orderedSteps} showDescription layout="cascade" />
         </div>
 
         <div className="panel code-panel">
           <div className="panel-header">
             <div>
-              <h2>Python editor & console</h2>
+              <h2>Code Editor</h2>
             </div>
             <div className="button-row">
               <button className="ghost" onClick={resetRuntime}>
@@ -145,6 +159,42 @@ export function WorkspacePage({ onNotify }: Props) {
           </div>
         </div>
       </div>
+
+      {isHintOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => setIsHintOpen(false)}
+        >
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Assignment hint"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3 className="modal-title">Hint</h3>
+              <button
+                className="ghost"
+                onClick={() => setIsHintOpen(false)}
+                aria-label="Close hint modal"
+              >
+                Close
+              </button>
+            </div>
+            <p className="muted">{hintText}</p>
+            <div className="button-row top-gap">
+              <button className="ghost" onClick={() => onNotify(hintText)}>
+                Send hint to toast
+              </button>
+              <button className="primary" onClick={() => setIsHintOpen(false)}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

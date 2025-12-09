@@ -68,6 +68,19 @@
   animation: flowFadeIn 0.45s ease forwards;
 }
 
+.steps.cascade {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cascade-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .flow-index {
   width: 34px;
   height: 34px;
@@ -78,6 +91,49 @@
   font-weight: 800;
   color: #03110e;
   box-shadow: 0 8px 18px rgba(23, 195, 178, 0.3);
+}
+
+.cascade-line {
+  display: none;
+}
+
+.cascade-text {
+  display: grid;
+  gap: 4px;
+}
+
+.cascade-title {
+  margin: 0 0 2px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.cascade-description {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .steps.flowchart {
+    gap: 10px 8px;
+  }
+
+  .flow-title {
+    white-space: normal;
+  }
+
+  .flow-connector {
+    width: 28px;
+  }
+
+  .cascade-row {
+    align-items: center;
+  }
+
+  .cascade-text {
+    gap: 2px;
+  }
 }
 
 .flow-title {
@@ -95,20 +151,6 @@
   transform-origin: left center;
   transform: scaleX(0.2);
   animation: flowLineIn 0.45s ease forwards;
-}
-
-@media (max-width: 700px) {
-  .steps.flowchart {
-    gap: 10px 8px;
-  }
-
-  .flow-title {
-    white-space: normal;
-  }
-
-  .flow-connector {
-    width: 28px;
-  }
 }
 
 @keyframes flowFadeIn {
