@@ -38,7 +38,6 @@ export function AssignmentOverviewPage({ onNotify }: Props) {
       </div>
       <div className="panel overview-grid">
         <div>
-          <p className="eyebrow">Assignment</p>
           <h2>{assignment.title}</h2>
           <p className="muted">{assignment.raw_instructions}</p>
           <div className="button-row top-gap">

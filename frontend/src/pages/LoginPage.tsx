@@ -32,8 +32,7 @@ export function LoginPage({ onNotify }: Props) {
   return (
     <div className="auth-layout">
       <div className="auth-card panel">
-        <p className="eyebrow">Code Lab</p>
-        <h2>{mode === "login" ? "Log in" : "Create account"}</h2>
+        <h2>{mode === "login" ? "Log in to Code Lab" : "Create your Code Lab account"}</h2>
         <p className="muted">
           Access the guided lab workspace. We keep your assignments and step plans synced.
         </p>

@@ -107,8 +107,7 @@ export function ConceptsPage({ onNotify }: Props) {
       <div className="panel">
         <div className="panel-header">
           <div>
-            <p className="eyebrow">Concepts</p>
-            <h2>Mini-lessons for this prompt</h2>
+            <h2>Concept mini-lessons for this prompt</h2>
             <p className="muted">
               Derived deterministically from your instructions so you can prep before coding.
             </p>

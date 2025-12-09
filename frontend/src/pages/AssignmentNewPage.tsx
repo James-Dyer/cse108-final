@@ -39,7 +39,6 @@ export function AssignmentNewPage({ onNotify }: Props) {
       <div className="panel">
         <div className="panel-header">
           <div>
-            <p className="eyebrow">Create</p>
             <h2>Draft a new assignment</h2>
             <p className="muted">
               Paste the full prompt, rubric, and any inputs/outputs. We’ll keep it scoped to Python.

@@ -96,8 +96,8 @@ export function WorkspacePage({ onNotify }: Props) {
         <div className="panel">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Instructions</p>
-              <h3>{assignment.title}</h3>
+              <h3>Assignment instructions</h3>
+              <p className="muted">{assignment.title}</p>
             </div>
             <span className="chip subtle">python</span>
           </div>
@@ -121,8 +121,7 @@ export function WorkspacePage({ onNotify }: Props) {
         <div className="panel code-panel">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Python runtime</p>
-              <h2>Editor & console</h2>
+              <h2>Python editor & console</h2>
             </div>
             <div className="button-row">
               <button className="ghost" onClick={resetRuntime}>

@@ -74,14 +74,6 @@
   margin-bottom: 22px;
 }
 
-.eyebrow {
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent-2);
-  font-size: 12px;
-  margin: 0 0 8px;
-}
-
 h1 {
   margin: 0 0 12px;
   font-family: var(--sans);
