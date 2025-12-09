@@ -10,11 +10,14 @@ export function StepsList({ steps }: Props) {
   }
 
   return (
-    <ol className="steps">
-      {steps.map((step) => (
-        <li key={step.order_index}>
-          <div className="step-index">{step.order_index + 1}</div>
-          <div>
+    <ol className="steps flow">
+      {steps.map((step, idx) => (
+        <li key={step.order_index} className="step-card">
+          <div className="step-marker" aria-hidden="true">
+            <div className="step-index">{idx + 1}</div>
+            {idx < steps.length - 1 && <div className="step-connector" />}
+          </div>
+          <div className="step-body">
             <p className="step-title">{step.title}</p>
             <p className="muted">{step.description}</p>
           </div>

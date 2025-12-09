@@ -1,12 +1,13 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { useAssignments } from "../hooks/useAssignments";
+import { StepsList } from "../components/StepsList";
 
 type Props = {
   onNotify: (msg: string) => void;
 };
 
-export function AssignmentOverviewPage({ onNotify }: Props) {
+export function StepsPage({ onNotify }: Props) {
   const { assignmentId } = useParams();
   const { getById } = useAssignments();
 
@@ -17,6 +18,11 @@ export function AssignmentOverviewPage({ onNotify }: Props) {
     return getById(numeric);
   }, [assignmentId, getById]);
 
+  const orderedSteps = useMemo(() => {
+    if (!assignment) return [];
+    return [...assignment.steps].sort((a, b) => a.order_index - b.order_index);
+  }, [assignment]);
+
   if (!assignment) {
     onNotify("Assignment not found.");
     return <Navigate to="/dashboard" replace />;
@@ -25,33 +31,26 @@ export function AssignmentOverviewPage({ onNotify }: Props) {
   return (
     <section className="page-shell">
       <div className="breadcrumb">
-        <Link className="nav-pill" to="/dashboard">
-          ← Dashboard
+        <Link className="nav-pill" to={`/assignments/${assignment.id}/concepts`}>
+          ← Concepts
         </Link>
-        <span className="muted">Assignment overview</span>
+        <span className="muted">Step plan</span>
       </div>
       <div className="panel">
         <div className="panel-header">
           <div>
-            <h2>Assignment overview</h2>
+            <h2>Step-by-step flow</h2>
             <p className="muted">{assignment.title}</p>
           </div>
+          <span className="chip subtle">{orderedSteps.length} steps</span>
         </div>
-        <div className="assignment-brief">
-          <p>
-            Given an array of integers nums and an integer target, return the indices of the two
-            numbers such that they add up to target. You may assume that each input would have
-            exactly one solution, and you may not use the same element twice. Return the answer in
-            any order.
-          </p>
-          <p className="muted">
-            Example: Input: nums = [2,7,11,15], target = 9. Output: [0,1]. Explanation:
-            Because nums[0] + nums[1] == 9.
-          </p>
-        </div>
+        <StepsList steps={orderedSteps} />
         <div className="button-row top-gap">
-          <Link className="primary" to={`/assignments/${assignment.id}/concepts`}>
-            View concepts
+          <Link className="ghost" to={`/assignments/${assignment.id}/concepts`}>
+            Back to concepts
+          </Link>
+          <Link className="primary" to={`/assignments/${assignment.id}/workspace`}>
+            Open coding workspace
           </Link>
         </div>
       </div>

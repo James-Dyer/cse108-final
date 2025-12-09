@@ -87,8 +87,8 @@ export function WorkspacePage({ onNotify }: Props) {
   return (
     <section className="page-shell">
       <div className="breadcrumb">
-        <Link className="nav-pill" to={`/assignments/${assignment.id}`}>
-          ← Assignment overview
+        <Link className="nav-pill" to={`/assignments/${assignment.id}/steps`}>
+          ← Steps
         </Link>
         <span className="muted">Coding workspace</span>
       </div>

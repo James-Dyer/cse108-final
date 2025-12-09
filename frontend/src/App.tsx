@@ -7,6 +7,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { AssignmentNewPage } from "./pages/AssignmentNewPage";
 import { AssignmentOverviewPage } from "./pages/AssignmentOverviewPage";
 import { ConceptsPage } from "./pages/ConceptsPage";
+import { StepsPage } from "./pages/StepsPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 import "./styles/theme.css";
 import "./styles/layout.css";
@@ -95,6 +96,7 @@ function Layout() {
           <Route path="/assignments/new" element={protectedRoute(<AssignmentNewPage onNotify={setToast} />)} />
           <Route path="/assignments/:assignmentId" element={protectedRoute(<AssignmentOverviewPage onNotify={setToast} />)} />
           <Route path="/assignments/:assignmentId/concepts" element={protectedRoute(<ConceptsPage onNotify={setToast} />)} />
+          <Route path="/assignments/:assignmentId/steps" element={protectedRoute(<StepsPage onNotify={setToast} />)} />
           <Route path="/assignments/:assignmentId/workspace" element={protectedRoute(<WorkspacePage onNotify={setToast} />)} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

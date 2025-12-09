@@ -105,14 +105,14 @@ export function ConceptsPage({ onNotify }: Props) {
         <span className="muted">Concept breakdown</span>
       </div>
       <div className="panel">
-        <div className="panel-header">
+        <div className="panel-header concept-header">
           <div>
-            <h2>Concept mini-lessons for this prompt</h2>
+            <h2>Concept mini-lessons for this assignment</h2>
             <p className="muted">
               Derived deterministically from your instructions so you can prep before coding.
             </p>
           </div>
-          <span className="chip subtle">{concepts.length} tags</span>
+          <span className="chip subtle">{concepts.length} concepts</span>
         </div>
         <div className="concept-grid">
           {concepts.map((concept) => (
@@ -134,11 +134,11 @@ export function ConceptsPage({ onNotify }: Props) {
           <Link className="ghost" to={`/assignments/${assignment.id}`}>
             Back to overview
           </Link>
-          <Link className="primary" to={`/assignments/${assignment.id}/workspace`}>
-            Jump into workspace
+          <Link className="primary" to={`/assignments/${assignment.id}/steps`}>
+            View steps
           </Link>
         </div>
-      </div>
-    </section>
+      </div >
+    </section >
   );
 }
