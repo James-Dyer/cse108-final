@@ -116,6 +116,7 @@ class Assignment(db.Model):
     raw_instructions = db.Column(db.Text, nullable=False)
     language = db.Column(db.String(64), default="python", nullable=False)
     code = db.Column(db.Text, default="", nullable=False)
+    max_stage_unlocked = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -136,6 +137,7 @@ class Assignment(db.Model):
         "raw_instructions": self.raw_instructions,
         "language": self.language,
         "code": self.code,
+        "max_stage_unlocked": self.max_stage_unlocked,
         "created_at": self.created_at.isoformat(),
         "updated_at": self.updated_at.isoformat(),
     }
@@ -377,6 +379,7 @@ def create_assignment():
     title = (data.get("title") or "").strip()
     instructions = (data.get("raw_instructions") or "").strip()
     language = (data.get("language") or "python").strip().lower()
+    max_stage_unlocked = 0
 
     if not title:
         return jsonify({"error": "Title is required."}), 400
@@ -395,6 +398,7 @@ def create_assignment():
         raw_instructions=instructions,
         language=language or "python",
         code=DEFAULT_SAMPLE_CODE,
+        max_stage_unlocked=max_stage_unlocked,
     )
 
     for idx, step in enumerate(build_step_plan(instructions, assignment.language)):
@@ -513,6 +517,33 @@ def update_assignment_code(assignment_id: int):
     return jsonify({"assignment": serialize_assignment(assignment)})
 
 
+@app.route("/api/assignments/<int:assignment_id>/progress", methods=["PATCH"])
+@require_auth
+def update_assignment_progress(assignment_id: int):
+    assignment = get_assignment_or_404(assignment_id)
+    if not assignment or assignment.user_id != g.current_user.id:
+        return jsonify({"error": "Assignment not found."}), 404
+
+    data = request.get_json() or {}
+    if "max_stage_unlocked" not in data:
+        return jsonify({"error": "max_stage_unlocked is required."}), 400
+
+    try:
+        max_stage_unlocked = int(data.get("max_stage_unlocked", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "max_stage_unlocked must be an integer."}), 400
+
+    if max_stage_unlocked < 0 or max_stage_unlocked > 3:
+        return jsonify({"error": "max_stage_unlocked must be between 0 and 3."}), 400
+
+    # Avoid lowering progress.
+    assignment.max_stage_unlocked = max(
+        assignment.max_stage_unlocked or 0, max_stage_unlocked
+    )
+    db.session.commit()
+    return jsonify({"assignment": serialize_assignment(assignment)})
+
+
 def ensure_assignment_schema():
     inspector = inspect(db.engine)
     columns = [col["name"] for col in inspector.get_columns("assignments")]
@@ -524,6 +555,18 @@ def ensure_assignment_schema():
             conn.execute(
                 text("UPDATE assignments SET code = :default_code"),
                 {"default_code": DEFAULT_SAMPLE_CODE},
+            )
+    if "max_stage_unlocked" not in columns:
+        with db.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE assignments ADD COLUMN max_stage_unlocked INTEGER NOT NULL DEFAULT 0"
+                )
+            )
+            conn.execute(
+                text(
+                    "UPDATE assignments SET max_stage_unlocked = 0 WHERE max_stage_unlocked IS NULL"
+                )
             )
 
 

@@ -23,6 +23,7 @@ type Assignment = {
   raw_instructions: string;
   language: string;
   code?: string;
+  max_stage_unlocked?: number;
   steps: Step[];
 };
 
@@ -33,6 +34,7 @@ type AssignmentsContextValue = {
   create: (data: { title: string; raw_instructions: string }) => Promise<Assignment>;
   remove: (id: number) => Promise<void>;
   updateCode: (id: number, code: string) => Promise<Assignment>;
+  updateProgress: (id: number, maxStageUnlocked: number) => Promise<Assignment>;
   getById: (id: number) => Assignment | null;
 };
 
@@ -104,11 +106,36 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
     return resp.assignment;
   };
 
+  const updateProgress = async (id: number, maxStageUnlocked: number) => {
+    if (!token) throw new Error("unauthorized");
+    const resp = await apiFetch<{ assignment: Assignment }>(
+      `/api/assignments/${id}/progress`,
+      token,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ max_stage_unlocked: maxStageUnlocked }),
+      }
+    );
+    setAssignments((prev) =>
+      prev.map((assignment) => (assignment.id === id ? resp.assignment : assignment))
+    );
+    return resp.assignment;
+  };
+
   const getById = (id: number) =>
     assignments.find((a) => a.id === id) || null;
 
   const value = useMemo(
-    () => ({ assignments, loading, refresh, create, remove, updateCode, getById }),
+    () => ({
+      assignments,
+      loading,
+      refresh,
+      create,
+      remove,
+      updateCode,
+      updateProgress,
+      getById,
+    }),
     [assignments, loading]
   );
 

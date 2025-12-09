@@ -38,9 +38,8 @@
 
 .nav-links {
   display: flex;
-  gap: 10px;
+  align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
 }
 
 .nav-button {
@@ -57,6 +56,127 @@
   color: var(--text);
   border-color: rgba(23, 195, 178, 0.5);
   box-shadow: 0 10px 30px rgba(23, 195, 178, 0.15);
+}
+
+.progress-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.progress-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.progress-line {
+  position: relative;
+  display: block;
+  width: 68px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  opacity: 0.6;
+  margin: 0 -8px;
+  transform: translateY(-10px);
+}
+
+.progress-line.complete {
+  opacity: 1;
+}
+
+.progress-line .fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--accent), #28e0cb);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 200ms ease;
+}
+
+.progress-line.complete .fill {
+  transform: scaleX(1);
+}
+
+.progress-line.disabled {
+  opacity: 0.2;
+}
+
+.progress-button {
+  position: relative;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 6px;
+  align-items: center;
+  justify-items: center;
+}
+
+.progress-button:hover:not(.disabled) {
+  color: var(--text);
+}
+
+.progress-button.active {
+  color: #c7fff3;
+}
+
+.progress-button.complete:not(.active) {
+  color: #a8f5e8;
+}
+
+.progress-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  color: var(--muted);
+}
+
+.progress-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--border);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  font-weight: 800;
+  font-size: 14px;
+  transition: border 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  color: var(--muted);
+}
+
+.progress-button:hover:not(.disabled) .progress-dot {
+  border-color: rgba(23, 195, 178, 0.35);
+  color: var(--text);
+}
+
+.progress-button.active .progress-dot,
+.progress-button.complete .progress-dot,
+.progress-button:not(.disabled).active .progress-dot {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #03110e;
+  border-color: transparent;
+  box-shadow: 0 10px 24px rgba(23, 195, 178, 0.25);
+}
+
+.progress-button.disabled .progress-dot {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.progress-button .progress-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .user-chip {

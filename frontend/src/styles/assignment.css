@@ -85,7 +85,7 @@
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: linear-gradient(135deg, var(--accent), #28e0cb);
   display: grid;
   place-items: center;
   font-weight: 800;

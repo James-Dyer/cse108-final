@@ -99,8 +99,8 @@ export function ConceptsPage({ onNotify }: Props) {
   return (
     <section className="page-shell">
       <div className="breadcrumb">
-        <Link className="nav-pill" to={`/assignments/${assignment.id}`}>
-          ← Assignment
+        <Link className="nav-pill" to="/dashboard">
+          ← Dashboard
         </Link>
         <span className="muted">Concept breakdown</span>
       </div>
