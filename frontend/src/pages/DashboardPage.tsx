@@ -58,31 +58,6 @@ export function DashboardPage({
       </section>
 
       <section className="grid dashboard-grid">
-        <div className="panel activity-card">
-          <div className="panel-header">
-            <div>
-              <h3>Your activity</h3>
-              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                {activityHeadline}
-              </p>
-            </div>
-          </div>
-          <ActivityCalendar
-            activity={activity}
-            months={6}
-            onToggleDay={handleToggleDay}
-            themeOverrides={{
-              activeColor: "#3cf5d0",
-              hoverColor: "rgba(60, 245, 208, 0.22)",
-            }}
-          />
-          {pendingDate && (
-            <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-              Updating {pendingDate}...
-            </p>
-          )}
-        </div>
-
         <div className="panel">
           <div className="panel-header">
             <div>
@@ -106,6 +81,31 @@ export function DashboardPage({
               />
             ))}
           </div>
+        </div>
+
+        <div className="panel activity-card">
+          <div className="panel-header">
+            <div>
+              <h3>Your activity</h3>
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                {activityHeadline}
+              </p>
+            </div>
+          </div>
+          <ActivityCalendar
+            activity={activity}
+            months={6}
+            onToggleDay={handleToggleDay}
+            themeOverrides={{
+              activeColor: "#3cf5d0",
+              hoverColor: "rgba(60, 245, 208, 0.22)",
+            }}
+          />
+          {pendingDate && (
+            <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
+              Updating {pendingDate}...
+            </p>
+          )}
         </div>
       </section>
     </>

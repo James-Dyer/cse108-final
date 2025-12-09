@@ -25,9 +25,9 @@ const DEFAULT_THEME: ActivityTheme = {
   borderColor: "rgba(255, 255, 255, 0.08)",
   textColor: "var(--text)",
   monthLabelColor: "var(--text)",
-  squareSize: 5,
-  gutter: 2,
-  radius: 1,
+  squareSize: 3,
+  gutter: 1,
+  radius: 0.5,
   fontFamily: "var(--sans)",
 };
 
@@ -113,6 +113,8 @@ export function ActivityCalendar({
   const squareSize = theme.squareSize;
   const desiredGutter = theme.gutter;
   const calendarGutter = desiredGutter + (squareSize - LIBRARY_SQUARE_SIZE);
+  const monthToOmit = start.getMonth();
+  const monthLabels = MONTH_LABELS.map((label, idx) => (idx === monthToOmit ? "" : label));
 
   const style = {
     "--activity-active": theme.activeColor,
@@ -137,7 +139,7 @@ export function ActivityCalendar({
         showMonthLabels
         horizontal
         gutterSize={calendarGutter}
-        monthLabels={MONTH_LABELS}
+        monthLabels={monthLabels}
         classForValue={(value) => {
           if (!value || !value.date) return "activity-cell empty";
           const active = Boolean((value as CalendarValue).active);

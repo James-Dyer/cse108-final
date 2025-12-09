@@ -1,5 +1,5 @@
 .grid.dashboard-grid {
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1fr 0.5fr;
 }
 
 @media (max-width: 900px) {
@@ -34,24 +34,25 @@
 }
 
 .activity-calendar {
-  margin-top: 10px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.02);
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   overflow-x: auto;
 }
 
 .activity-calendar svg {
-  width: 100%;
-  min-width: 520px;
+  width: 120%;
+  min-width: 260px;
   display: block;
+  transform: translateX(-17%);
 }
 
 .activity-calendar text {
   fill: var(--activity-text);
   font-family: var(--activity-font);
-  font-size: 4px;
+  font-size: 3px;
 }
 
 .activity-calendar text.month-label {
@@ -85,7 +86,6 @@
 
 .activity-calendar .activity-cell.active {
   fill: var(--activity-active);
-  stroke: rgba(0, 0, 0, 0.15);
 }
 
 .activity-calendar .activity-cell:hover {
@@ -99,4 +99,13 @@
 
 .activity-calendar .activity-cell.month-start {
   stroke-width: 1.4px;
+}
+
+/* Pull labels closer to the grid */
+.activity-calendar .react-calendar-heatmap-all-weeks {
+  transform: translate(30px, 9px) !important;
+}
+
+.activity-calendar .react-calendar-heatmap-weekday-labels {
+  transform: translate(25px, 5px) !important;
 }
