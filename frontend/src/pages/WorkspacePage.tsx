@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useAssignments } from "../hooks/useAssignments";
 import { StepsList } from "../components/StepsList";
@@ -15,10 +15,16 @@ export function WorkspacePage({ onNotify }: Props) {
   >("idle");
   const [pyodide, setPyodide] = useState<any>(null);
   const [isHintOpen, setIsHintOpen] = useState(false);
+  const [dragging, setDragging] = useState<"col" | "row" | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(360);
+  const [codeHeight, setCodeHeight] = useState(380);
+  const [isNarrow, setIsNarrow] = useState(false);
   const [code, setCode] = useState(
     `# Write Python here\n\ndef main():\n    sample = [1, 2, 3]\n    doubled = [x * 2 for x in sample]\n    print("Doubled values:", doubled)\n\nif __name__ == "__main__":\n    main()\n`
   );
   const [consoleText, setConsoleText] = useState("Runtime warming up...");
+  const layoutRef = useRef<HTMLDivElement | null>(null);
+  const codeStackRef = useRef<HTMLDivElement | null>(null);
 
   const assignment = useMemo(() => {
     if (!assignmentId) return null;
@@ -95,6 +101,54 @@ export function WorkspacePage({ onNotify }: Props) {
     setConsoleText("Cleared console. Runtime still loaded.");
   };
 
+  useEffect(() => {
+    const handleMove = (event: MouseEvent) => {
+      if (!dragging) return;
+      if (dragging === "col") {
+        const layoutRect = layoutRef.current?.getBoundingClientRect();
+        if (!layoutRect) return;
+        const handleSize = 10;
+        const minLeft = 240;
+        const minRight = 440;
+        const proposed = event.clientX - layoutRect.left;
+        const maxLeft = layoutRect.width - minRight - handleSize;
+        const nextWidth = Math.min(Math.max(proposed, minLeft), Math.max(minLeft, maxLeft));
+        setSidebarWidth(nextWidth);
+      } else if (dragging === "row") {
+        const codeRect = codeStackRef.current?.getBoundingClientRect();
+        if (!codeRect) return;
+        const handleSize = 10;
+        const minTop = 260;
+        const minBottom = 200;
+        const proposed = event.clientY - codeRect.top;
+        const maxTop = codeRect.height - minBottom - handleSize;
+        const nextHeight = Math.min(Math.max(proposed, minTop), Math.max(minTop, maxTop));
+        setCodeHeight(nextHeight);
+      }
+      event.preventDefault();
+    };
+
+    const handleUp = () => {
+      if (dragging) setDragging(null);
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, [dragging]);
+
+  useEffect(() => {
+    const setSize = () => {
+      setIsNarrow(window.innerWidth <= 1040);
+    };
+    setSize();
+    window.addEventListener("resize", setSize);
+    return () => window.removeEventListener("resize", setSize);
+  }, []);
+
   if (!assignment) {
     onNotify("Assignment not found.");
     return <Navigate to="/dashboard" replace />;
@@ -108,7 +162,13 @@ export function WorkspacePage({ onNotify }: Props) {
         </Link>
         <span className="muted">Coding workspace</span>
       </div>
-      <div className="workspace-layout">
+      <div
+        className="workspace-layout"
+        ref={layoutRef}
+        style={{
+          gridTemplateColumns: isNarrow ? "1fr" : `${sidebarWidth}px 10px 1fr`,
+        }}
+      >
         <div className="panel window-panel">
           <div className="window-header">
             <div className="window-title">
@@ -157,7 +217,22 @@ export function WorkspacePage({ onNotify }: Props) {
           </div>
         </div>
 
-        <div className="code-stack">
+        {!isNarrow && (
+          <div
+            className={`splitter splitter-vertical${dragging === "col" ? " active" : ""}`}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              setDragging("col");
+            }}
+            role="presentation"
+          />
+        )}
+
+        <div
+          className="code-stack"
+          ref={codeStackRef}
+          style={{ gridTemplateRows: `${codeHeight}px 10px 1fr` }}
+        >
           <div className="panel window-panel code-panel">
             <div className="window-header">
               <div className="window-title">
@@ -193,6 +268,15 @@ export function WorkspacePage({ onNotify }: Props) {
               </div>
             </div>
           </div>
+
+          <div
+            className={`splitter splitter-horizontal${dragging === "row" ? " active" : ""}`}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              setDragging("row");
+            }}
+            role="presentation"
+          />
 
           <div className="panel window-panel console-panel">
             <div className="window-header">
