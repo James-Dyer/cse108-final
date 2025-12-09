@@ -31,7 +31,7 @@ type Concept = {
   pitfalls?: string;
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5001";
 
 const deriveConcepts = (raw: string): Concept[] => {
   const lowered = raw.toLowerCase();
@@ -309,8 +309,8 @@ function App() {
         target === "dashboard"
           ? setPage("dashboard")
           : target === "login"
-          ? setPage("login")
-          : requireAssignment(target)
+            ? setPage("login")
+            : requireAssignment(target)
       }
       disabled={target !== "dashboard" && target !== "login" && !currentAssignment}
     >
@@ -464,9 +464,8 @@ function App() {
             {assignments.map((assignment) => (
               <article
                 key={assignment.id}
-                className={`assignment-card ${
-                  assignment.id === selectedId ? "active" : ""
-                }`}
+                className={`assignment-card ${assignment.id === selectedId ? "active" : ""
+                  }`}
               >
                 <div>
                   <h3>{assignment.title}</h3>
