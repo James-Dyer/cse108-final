@@ -54,7 +54,6 @@ export function DashboardPage({
               <h3>Your Assignments</h3>
             </div>
             <div className="button-row">
-              <span className="chip">{assignments.length} active</span>
               <Link className="primary" to="/assignments/new">
                 + New Assignment
               </Link>
