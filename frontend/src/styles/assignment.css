@@ -40,62 +40,99 @@
   margin: 0;
 }
 
-.steps.flow {
+.steps.flowchart {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.flow-segment {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.step-card {
+.flow-node {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 14px;
-  align-items: flex-start;
-  background: linear-gradient(135deg, rgba(23, 195, 178, 0.08), rgba(11, 16, 32, 0.9));
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(23, 195, 178, 0.12), rgba(11, 16, 32, 0.92));
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 12px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: flowFadeIn 0.45s ease forwards;
 }
 
-.step-marker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 38px;
-  height: 100%;
-}
-
-.step-index {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+.flow-index {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   display: grid;
   place-items: center;
   font-weight: 800;
   color: #03110e;
-  box-shadow: 0 8px 20px rgba(23, 195, 178, 0.35);
+  box-shadow: 0 8px 18px rgba(23, 195, 178, 0.3);
 }
 
-.step-connector {
-  flex: 1;
-  width: 3px;
-  border-radius: 6px;
-  background: linear-gradient(180deg, rgba(23, 195, 178, 0.8), transparent);
-  opacity: 0.7;
-}
-
-.step-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.step-title {
+.flow-title {
   margin: 0;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.flow-connector {
+  width: 52px;
+  height: 3px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(23, 195, 178, 0.8), transparent);
+  opacity: 0;
+  transform-origin: left center;
+  transform: scaleX(0.2);
+  animation: flowLineIn 0.45s ease forwards;
+}
+
+@media (max-width: 700px) {
+  .steps.flowchart {
+    gap: 10px 8px;
+  }
+
+  .flow-title {
+    white-space: normal;
+  }
+
+  .flow-connector {
+    width: 28px;
+  }
+}
+
+@keyframes flowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flowLineIn {
+  from {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+
+  to {
+    opacity: 0.9;
+    transform: scaleX(1);
+  }
 }
 
 .concept-grid {

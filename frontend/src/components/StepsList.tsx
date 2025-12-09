@@ -10,19 +10,25 @@ export function StepsList({ steps }: Props) {
   }
 
   return (
-    <ol className="steps flow">
+    <div className="steps flowchart" role="list">
       {steps.map((step, idx) => (
-        <li key={step.order_index} className="step-card">
-          <div className="step-marker" aria-hidden="true">
-            <div className="step-index">{idx + 1}</div>
-            {idx < steps.length - 1 && <div className="step-connector" />}
+        <div className="flow-segment" key={step.order_index} role="listitem">
+          <div
+            className="flow-node"
+            style={{ animationDelay: `${idx * 200}ms` }}
+          >
+            <div className="flow-index">{idx + 1}</div>
+            <p className="flow-title">{step.title}</p>
           </div>
-          <div className="step-body">
-            <p className="step-title">{step.title}</p>
-            <p className="muted">{step.description}</p>
-          </div>
-        </li>
+          {idx < steps.length - 1 && (
+            <div
+              className="flow-connector"
+              aria-hidden="true"
+              style={{ animationDelay: `${idx * 200 + 120}ms` }}
+            />
+          )}
+        </div>
       ))}
-    </ol>
+    </div>
   );
 }
