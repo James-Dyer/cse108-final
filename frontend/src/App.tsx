@@ -321,7 +321,6 @@ function App() {
   const renderLogin = () => (
     <div className="auth-layout">
       <div className="auth-card panel">
-        <p className="eyebrow">Code Lab</p>
         <h2>{authMode === "login" ? "Log in" : "Create account"}</h2>
         <p className="muted">
           Access the guided lab workspace. We keep your assignments and step plans synced.
@@ -372,16 +371,10 @@ function App() {
     <>
       <section className="hero">
         <div>
-          <p className="eyebrow">Dashboard</p>
-          <h1>Keep labs organized and scoped.</h1>
+          <h1>Dashboard</h1>
           <p className="lede">
-            Draft assignments, see progress, and jump into a guided workspace. Plans stay deterministic and ready for analysis.
+            Draft assignments, see progress, and jump into a guided workspace.
           </p>
-          <div className="pill-row">
-            <span className="pill">Step planner</span>
-            <span className="pill">Concept tags</span>
-            <span className="pill">Pyodide runner</span>
-          </div>
         </div>
         <div className="status-tile">
           <div className="status-dot" data-state={pyodideStatus} />
@@ -452,7 +445,6 @@ function App() {
         <div className="panel">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Assignments</p>
               <h3>Your queue</h3>
             </div>
             <span className="chip">{assignments.length} active</span>
@@ -513,7 +505,6 @@ function App() {
       </div>
       <div className="panel overview-grid">
         <div>
-          <p className="eyebrow">Assignment</p>
           <h2>{currentAssignment?.title || "Select an assignment"}</h2>
           <p className="muted">
             {currentAssignment?.raw_instructions ||
@@ -564,7 +555,6 @@ function App() {
       <div className="panel">
         <div className="panel-header">
           <div>
-            <p className="eyebrow">Concepts</p>
             <h2>Mini-lessons for this prompt</h2>
             <p className="muted">
               Derived deterministically from your instructions so you can prep before coding.
@@ -612,7 +602,6 @@ function App() {
         <div className="panel">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Instructions</p>
               <h3>{currentAssignment?.title || "Select an assignment"}</h3>
             </div>
             <span className="chip subtle">
@@ -652,7 +641,6 @@ function App() {
         <div className="panel code-panel">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Python runtime</p>
               <h2>Editor & console</h2>
             </div>
             <div className="button-row">
