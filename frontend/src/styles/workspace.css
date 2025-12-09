@@ -42,6 +42,10 @@
   min-height: 0;
 }
 
+.code-panel .window-body {
+  display: flex;
+}
+
 .editor {
   display: flex;
   flex-direction: column;
@@ -49,18 +53,19 @@
   min-height: 0;
 }
 
-.editor textarea {
-  width: 100%;
+.editor .cm-editor {
   height: 100%;
   min-height: 0;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.editor .cm-scroller {
   font-family: var(--mono);
   font-size: 14px;
   line-height: 1.4;
-  border-radius: 14px;
   background: #0c101c;
-  border: 1px solid var(--border);
-  color: var(--text);
-  overflow: auto;
 }
 
 .splitter {
@@ -149,7 +154,9 @@
   margin: 0;
   white-space: pre-wrap;
   font-family: var(--mono);
-  color: #d0ffe9;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #f2f4f8;
   flex: 1;
 }
 

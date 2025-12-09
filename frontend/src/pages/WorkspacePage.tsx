@@ -1,3 +1,6 @@
+import CodeMirror from "@uiw/react-codemirror";
+import { python } from "@codemirror/lang-python";
+import { oneDark } from "@codemirror/theme-one-dark";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useAssignments } from "../hooks/useAssignments";
@@ -89,11 +92,33 @@ export function WorkspacePage({ onNotify }: Props) {
       setConsoleText("Runtime not ready yet.");
       return;
     }
+    let outputBuffer = "";
+    const appendOutput = (text: string) => {
+      outputBuffer += text;
+      setConsoleText(outputBuffer);
+    };
+    let prevStdout: any;
+    let prevStderr: any;
+    let stdoutHooked = false;
+    let stderrHooked = false;
     try {
+      setConsoleText("");
+      prevStdout = pyodide.setStdout({ batched: appendOutput });
+      prevStderr = pyodide.setStderr({ batched: appendOutput });
+      stdoutHooked = true;
+      stderrHooked = true;
       const result = await pyodide.runPythonAsync(code);
-      setConsoleText(String(result ?? "Finished without output."));
+      const hasPrinted = outputBuffer.trim().length > 0;
+      if (hasPrinted && result != null) {
+        appendOutput(`${outputBuffer.endsWith("\n") ? "" : "\n"}${String(result)}`);
+      } else if (!hasPrinted) {
+        setConsoleText(String(result ?? "Finished without output."));
+      }
     } catch (error: any) {
       setConsoleText(error.message || String(error));
+    } finally {
+      if (stdoutHooked) pyodide.setStdout(prevStdout);
+      if (stderrHooked) pyodide.setStderr(prevStderr);
     }
   };
 
@@ -260,10 +285,14 @@ export function WorkspacePage({ onNotify }: Props) {
             </div>
             <div className="window-body">
               <div className="editor">
-                <textarea
+                <CodeMirror
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  spellCheck={false}
+                  theme={oneDark}
+                  extensions={[python()]}
+                  basicSetup={{ lineNumbers: true, highlightActiveLine: true }}
+                  onChange={(value) => setCode(value)}
+                  height="100%"
+                  style={{ height: "100%" }}
                 />
               </div>
             </div>
