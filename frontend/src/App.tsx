@@ -118,7 +118,6 @@ function App() {
   const [assignmentForm, setAssignmentForm] = useState({
     title: "",
     raw_instructions: "",
-    language: "python",
   });
   const [statusMessage, setStatusMessage] = useState("");
   const [code, setCode] = useState(
@@ -193,6 +192,14 @@ function App() {
       navigate("/dashboard", { replace: true });
     }
   }, [user, token, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const id = window.setTimeout(() => setStatusMessage(""), 7000);
+    return () => {
+      window.clearTimeout(id);
+    };
+  }, [statusMessage]);
 
   useEffect(() => {
     const savedUser =
@@ -275,13 +282,14 @@ function App() {
     try {
       const payload = {
         ...assignmentForm,
+        language: "python",
       };
       const data = await apiFetch("/api/assignments", {
         method: "POST",
         body: JSON.stringify(payload),
       });
       setAssignments((prev) => [data.assignment, ...prev]);
-      setAssignmentForm({ title: "", raw_instructions: "", language: "python" });
+      setAssignmentForm({ title: "", raw_instructions: "" });
       setStatusMessage("Assignment drafted with a starter step plan.");
       navigate(`/assignments/${data.assignment.id}`);
     } catch (error: any) {
@@ -410,64 +418,14 @@ function App() {
       <section className="grid">
         <div className="panel">
           <div className="panel-header">
-            <h3>Draft a new assignment</h3>
-          </div>
-          <form className="form" onSubmit={handleAssignmentCreate}>
-            <label>
-              Title
-              <input
-                type="text"
-                required
-                value={assignmentForm.title}
-                onChange={(e) =>
-                  setAssignmentForm({
-                    ...assignmentForm,
-                    title: e.target.value,
-                  })
-                }
-                placeholder="Lab 01: Arrays & loops"
-              />
-            </label>
-            <label>
-              Instructions
-              <textarea
-                required
-                value={assignmentForm.raw_instructions}
-                onChange={(e) =>
-                  setAssignmentForm({
-                    ...assignmentForm,
-                    raw_instructions: e.target.value,
-                  })
-                }
-                placeholder="Paste the full prompt, rubric, and any inputs/outputs."
-              />
-            </label>
-            <label>
-              Language
-              <select
-                value={assignmentForm.language}
-                onChange={(e) =>
-                  setAssignmentForm({
-                    ...assignmentForm,
-                    language: e.target.value,
-                  })
-                }
-              >
-                <option value="python">Python</option>
-              </select>
-            </label>
-            <button type="submit" className="primary">
-              Build plan
-            </button>
-          </form>
-        </div>
-
-        <div className="panel">
-          <div className="panel-header">
             <div>
-              <h3>Your queue</h3>
+              <h3>Your Assignments</h3>
             </div>
-            <span className="chip">{assignments.length} active</span>
+            <div className="button-row">
+              <Link className="primary" to="/assignments/new">
+                + New Assignment
+              </Link>
+            </div>
           </div>
           <div className="assignment-list">
             {assignments.length === 0 && (
@@ -484,10 +442,6 @@ function App() {
                     {assignment.raw_instructions.slice(0, 140)}
                     {assignment.raw_instructions.length > 140 ? "..." : ""}
                   </p>
-                  <div className="meta-row">
-                    <span className="chip">Steps: {assignment.steps.length}</span>
-                    <span className="chip subtle">{assignment.language}</span>
-                  </div>
                 </div>
                 <div className="card-actions">
                   <Link className="ghost" to={`/assignments/${assignment.id}`}>
@@ -503,6 +457,17 @@ function App() {
               </article>
             ))}
           </div>
+        </div>
+        <div className="panel activity-card">
+          <div className="panel-header">
+            <div>
+              <h3>Your Activity</h3>
+            </div>
+            <span className="chip subtle">Coming soon</span>
+          </div>
+          <p className="muted">
+            We’ll visualize recent sessions and streaks here with a calendar heatmap. For now, ship your labs and keep the streak alive.
+          </p>
         </div>
       </section>
     </>
@@ -535,10 +500,6 @@ function App() {
             <p className="eyebrow">Assignment</p>
             <h2>{currentAssignment.title}</h2>
             <p className="muted">{currentAssignment.raw_instructions}</p>
-            <div className="meta-row">
-              <span className="chip">Language: {currentAssignment.language}</span>
-              <span className="chip subtle">Steps: {orderedSteps.length}</span>
-            </div>
             <div className="button-row top-gap">
               <Link className="ghost" to={`/assignments/${currentAssignment.id}/concepts`}>
                 View concepts
@@ -666,7 +627,7 @@ function App() {
                 <h3>{currentAssignment.title}</h3>
               </div>
               <span className="chip subtle">
-                {currentAssignment.language}
+                python
               </span>
             </div>
             <p className="muted">
@@ -731,6 +692,67 @@ function App() {
     );
   };
 
+  const NewAssignmentPage = () => (
+    <section className="page-shell">
+      <div className="breadcrumb">
+        <Link className="nav-pill" to="/dashboard">
+          ← Dashboard
+        </Link>
+        <span className="muted">New assignment</span>
+      </div>
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">Create</p>
+            <h2>Draft a new assignment</h2>
+            <p className="muted">
+              Paste the full prompt, rubric, and any inputs/outputs. We’ll keep it scoped to Python.
+            </p>
+          </div>
+        </div>
+        <form className="form" onSubmit={handleAssignmentCreate}>
+          <label>
+            Title
+            <input
+              type="text"
+              required
+              value={assignmentForm.title}
+              onChange={(e) =>
+                setAssignmentForm({
+                  ...assignmentForm,
+                  title: e.target.value,
+                })
+              }
+              placeholder="Lab 01: Arrays & loops"
+            />
+          </label>
+          <label>
+            Instructions
+            <textarea
+              required
+              value={assignmentForm.raw_instructions}
+              onChange={(e) =>
+                setAssignmentForm({
+                  ...assignmentForm,
+                  raw_instructions: e.target.value,
+                })
+              }
+              placeholder="Paste the full prompt, rubric, and any inputs/outputs."
+            />
+          </label>
+          <div className="button-row top-gap">
+            <button type="button" className="ghost" onClick={() => navigate("/dashboard")}>
+              Cancel
+            </button>
+            <button type="submit" className="primary">
+              Build plan
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  );
+
   const isAuthed = Boolean(user && token);
 
   const protectedRoute = (element: ReactNode) => {
@@ -762,9 +784,9 @@ function App() {
               className={({ isActive }) =>
                 `nav-button ${isActive ? "active" : ""}`
               }
-              to="/dashboard#new"
+              to="/assignments/new"
             >
-              Draft
+              New Assignment
             </NavLink>
           </div>
           <div className="user-chip">
@@ -799,6 +821,10 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={protectedRoute(<DashboardPage />)} />
+          <Route
+            path="/assignments/new"
+            element={protectedRoute(<NewAssignmentPage />)}
+          />
           <Route
             path="/assignments/:assignmentId"
             element={protectedRoute(<AssignmentOverviewPage />)}

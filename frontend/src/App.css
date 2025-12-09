@@ -271,13 +271,6 @@ textarea {
   box-shadow: 0 10px 30px rgba(23, 195, 178, 0.15);
 }
 
-.meta-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-
 .chip {
   display: inline-flex;
   align-items: center;

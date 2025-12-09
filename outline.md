@@ -91,14 +91,6 @@ Header: Navigation Buttons as well as coding workspace buttons (run, hint, logou
 
 Important: You design prompts so the AI critiques and nudges, but doesn’t just spit the full solution.
 
-### Step 6: Wrap-up & learning summary
-Once the assignment is done:
-Show which steps were easy/hard.
-Summarize key concepts used.
-Highlight common mistakes they made.
-
-UI: “Learning Report” page for that assignment. Report is saved in the database for later viewing.
-
 ## MVP boundaries
 - generic for any CS class with labs/assignments in python.
 
