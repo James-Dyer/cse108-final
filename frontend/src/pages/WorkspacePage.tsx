@@ -109,11 +109,34 @@ export function WorkspacePage({ onNotify }: Props) {
         <span className="muted">Coding workspace</span>
       </div>
       <div className="workspace-layout">
-        <div className="panel">
-          <div className="panel-header">
-            <div>
-              <h3>Assignment instructions</h3>
-              <p className="muted">{assignment.title}</p>
+        <div className="panel window-panel">
+          <div className="window-header">
+            <div className="window-title">
+              <span className="window-icon assignment-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M6 3.5a2 2 0 0 1 2-2h3.172a2 2 0 0 1 1.414.586l2.828 2.828A2 2 0 0 1 16 6.328V16.5a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-13Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M13.5 2.5V4a2 2 0 0 0 2 2h1.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M8.5 9.5h5M8.5 12.5h5M8.5 6.5h2"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+              <p className="window-title-text">{assignment.title}</p>
             </div>
             <button
               className="ghost hint-button"
@@ -124,37 +147,90 @@ export function WorkspacePage({ onNotify }: Props) {
               <span>Hint</span>
             </button>
           </div>
-          <p className="muted">
-            {assignment.raw_instructions ||
-              "Pick an assignment to view its prompt, steps, and hints."}
-          </p>
-          <h4>Plan</h4>
-          <StepsList steps={orderedSteps} showDescription layout="cascade" />
+          <div className="window-body">
+            <p className="muted">
+              {assignment.raw_instructions ||
+                "Pick an assignment to view its prompt, steps, and hints."}
+            </p>
+            <h4>Plan</h4>
+            <StepsList steps={orderedSteps} showDescription layout="cascade" />
+          </div>
         </div>
 
-        <div className="panel code-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Code Editor</h2>
+        <div className="code-stack">
+          <div className="panel window-panel code-panel">
+            <div className="window-header">
+              <div className="window-title">
+                <span className="window-icon code-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M8 5 4 10l4 5M12 5l4 5-4 5"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <p className="window-title-text">Code</p>
+              </div>
+              <div className="button-row">
+                <button className="ghost" onClick={resetRuntime}>
+                  Reset console
+                </button>
+                <button className="primary" onClick={runCode}>
+                  Run code
+                </button>
+              </div>
             </div>
-            <div className="button-row">
+            <div className="window-body">
+              <div className="editor">
+                <textarea
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="panel window-panel console-panel">
+            <div className="window-header">
+              <div className="window-title">
+                <span className="window-icon output-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M4.5 4.5h11a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M7 8.5 9.5 10 7 11.5"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M10.5 11.5H13"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <p className="window-title-text">Output</p>
+              </div>
               <button className="ghost" onClick={resetRuntime}>
                 Reset console
               </button>
-              <button className="primary" onClick={runCode}>
-                Run code
-              </button>
             </div>
-          </div>
-          <div className="editor">
-            <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              spellCheck={false}
-            />
-            <div className="console">
-              <div className="console-label">Output</div>
-              <pre>{consoleText}</pre>
+            <div className="window-body">
+              <div className="console">
+                <pre>{consoleText}</pre>
+              </div>
             </div>
           </div>
         </div>
