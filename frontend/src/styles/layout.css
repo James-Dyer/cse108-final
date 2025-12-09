@@ -11,6 +11,13 @@
   padding: 18px 32px 64px;
 }
 
+.topbar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
 .hero {
   display: flex;
   align-items: flex-start;
@@ -87,6 +94,24 @@ h4 {
 .status-value {
   margin: 0;
   font-weight: 700;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.logo-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 0 6px rgba(23, 195, 178, 0.14);
 }
 
 .grid {

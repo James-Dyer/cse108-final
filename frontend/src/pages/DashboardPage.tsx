@@ -48,7 +48,7 @@ export function DashboardPage({
         <div className="panel">
           <div className="panel-header">
             <div>
-              <h3>Your Assignments</h3>
+              <h3>Recent Assignments</h3>
             </div>
             <div className="button-row">
               <Link className="primary" to="/assignments/new">

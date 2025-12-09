@@ -82,6 +82,23 @@ function Layout() {
 
   return (
     <div className="page">
+      <header className="topbar">
+        <div
+          className="brand"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("/dashboard")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              navigate("/dashboard");
+            }
+          }}
+        >
+          <span className="logo-dot" aria-hidden="true" />
+          Code Lab
+        </div>
+      </header>
       <main>
         <Routes>
           <Route path="/login" element={<LoginPage onNotify={setToast} />} />

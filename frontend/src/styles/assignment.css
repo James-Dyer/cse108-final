@@ -275,15 +275,12 @@
   display: grid;
   place-items: center;
   font-weight: 800;
-  color: #0b1220;
+  color: #e9eef5;
   transition: transform 120ms ease, border 120ms ease, background 160ms ease,
     color 160ms ease, box-shadow 200ms ease;
 }
 
 .progress-step.accomplished .progress-circle {
-  background: radial-gradient(circle at 30% 30%, rgba(43, 107, 255, 0.4), transparent),
-    radial-gradient(circle at 70% 70%, rgba(255, 157, 87, 0.35), transparent),
-    #0b1220;
   color: #fdf6e3;
   border-color: rgba(25, 195, 178, 1);
   box-shadow: 0 0 0 1px rgba(255, 157, 87, 0.25), 0 0 12px rgba(43, 107, 255, 0.28);
