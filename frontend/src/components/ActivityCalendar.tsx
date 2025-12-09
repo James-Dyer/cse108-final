@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
+import { cloneElement } from "react";
 import CalendarHeatmap from "react-calendar-heatmap";
 import type { ActivityMap } from "../hooks/useActivity";
 
@@ -22,11 +23,11 @@ const DEFAULT_THEME: ActivityTheme = {
   emptyColor: "rgba(255, 255, 255, 0.02)",
   hoverColor: "rgba(255, 255, 255, 0.12)",
   borderColor: "rgba(255, 255, 255, 0.08)",
-  textColor: "var(--muted)",
+  textColor: "var(--text)",
   monthLabelColor: "var(--text)",
-  squareSize: 12,
-  gutter: 4,
-  radius: 3,
+  squareSize: 5,
+  gutter: 2,
+  radius: 1,
   fontFamily: "var(--sans)",
 };
 
@@ -98,6 +99,8 @@ const isMonthStart = (iso: string) => {
   return day === 1;
 };
 
+const LIBRARY_SQUARE_SIZE = 10; // react-calendar-heatmap uses a fixed 10px square internally
+
 export function ActivityCalendar({
   activity,
   months = 6,
@@ -107,6 +110,9 @@ export function ActivityCalendar({
   const monthsToRender = clampMonths(months);
   const theme = { ...DEFAULT_THEME, ...(themeOverrides || {}) };
   const { values, start, end } = buildValues(activity, monthsToRender);
+  const squareSize = theme.squareSize;
+  const desiredGutter = theme.gutter;
+  const calendarGutter = desiredGutter + (squareSize - LIBRARY_SQUARE_SIZE);
 
   const style = {
     "--activity-active": theme.activeColor,
@@ -130,7 +136,7 @@ export function ActivityCalendar({
         showWeekdayLabels
         showMonthLabels
         horizontal
-        gutterSize={theme.gutter}
+        gutterSize={calendarGutter}
         monthLabels={MONTH_LABELS}
         classForValue={(value) => {
           if (!value || !value.date) return "activity-cell empty";
@@ -147,6 +153,17 @@ export function ActivityCalendar({
           if (!value?.date || !onToggleDay) return;
           const nextActive = !activity[value.date];
           onToggleDay(value.date, nextActive);
+        }}
+        transformDayElement={(rect: ReactElement<SVGRectElement>) => {
+          // Adjust the internal 10px square to match our theme size and gutter.
+          const x = (rect.props.x || 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+          const y = (rect.props.y || 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+          return cloneElement(rect, {
+            width: squareSize,
+            height: squareSize,
+            x,
+            y,
+          });
         }}
       />
     </div>

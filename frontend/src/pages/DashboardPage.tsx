@@ -16,7 +16,7 @@ export function DashboardPage({
   runtimeStatus = "ready",
 }: Props) {
   const { assignments, remove } = useAssignments();
-  const { activity, loading: activityLoading, setDayActive } = useActivity();
+  const { activity, setDayActive } = useActivity();
   const [pendingDate, setPendingDate] = useState<string | null>(null);
 
   const handleDelete = async (id: number) => {
@@ -42,7 +42,7 @@ export function DashboardPage({
 
   const activityHeadline = useMemo(() => {
     const totalActive = Object.values(activity || {}).filter(Boolean).length;
-    return `${totalActive} active day${totalActive === 1 ? "" : "s"} logged`;
+    return `${totalActive} active day${totalActive === 1 ? "" : "s"}`;
   }, [activity]);
 
   return (
@@ -63,16 +63,10 @@ export function DashboardPage({
             <div>
               <h3>Your activity</h3>
               <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                Last 6 months · {activityHeadline}
+                {activityHeadline}
               </p>
             </div>
-            <span className="chip subtle">
-              {activityLoading ? "Syncing..." : "Daily check-in"}
-            </span>
           </div>
-          <p className="muted" style={{ marginTop: 0 }}>
-            We mark today as active when you land here. Tap any tile to toggle activity and keep your streak honest.
-          </p>
           <ActivityCalendar
             activity={activity}
             months={6}

@@ -23,6 +23,7 @@
   grid-template-columns: 1fr auto;
   gap: 10px;
 }
+
 .assignment-card.active {
   border-color: rgba(23, 195, 178, 0.4);
   box-shadow: 0 10px 30px rgba(23, 195, 178, 0.15);
@@ -50,16 +51,18 @@
 .activity-calendar text {
   fill: var(--activity-text);
   font-family: var(--activity-font);
-  font-size: 11px;
+  font-size: 4px;
 }
 
 .activity-calendar text.month-label {
   fill: var(--activity-month-label);
   font-weight: 700;
+  font-size: 4px;
 }
 
 .activity-calendar text.weekday-label {
   fill: var(--activity-text);
+  font-size: 4px;
 }
 
 .activity-calendar .activity-cell {
