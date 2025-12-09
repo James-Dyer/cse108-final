@@ -289,11 +289,16 @@ def create_assignment():
     instructions = (data.get("raw_instructions") or "").strip()
     language = (data.get("language") or "python").strip().lower()
 
-    if not title or not instructions:
-        return (
-            jsonify({"error": "title and raw_instructions are required."}),
-            400,
-        )
+    if not title:
+        return jsonify({"error": "Title is required."}), 400
+    if len(title) > 255:
+        return jsonify({"error": "Title must be 255 characters or fewer."}), 400
+    if not instructions:
+        return jsonify({"error": "Instructions are required."}), 400
+    if len(instructions) > 20000:
+        return jsonify({"error": "Instructions are too long for storage."}), 400
+    if language not in {"python"}:
+        return jsonify({"error": "Unsupported language for MVP."}), 400
 
     assignment = Assignment(
         user_id=g.current_user.id,
@@ -352,9 +357,35 @@ def replace_steps(assignment_id: int):
     data = request.get_json() or {}
     steps_data = data.get("steps") or []
 
+    if not isinstance(steps_data, list):
+        return jsonify({"error": "Steps payload must be a list."}), 400
+
+    validated_steps = []
+    for idx, step in enumerate(steps_data):
+        title = (step.get("title") or "").strip()
+        description = (step.get("description") or "").strip()
+        order_index = step.get("order_index", idx)
+        try:
+            order_index = int(order_index)
+        except (TypeError, ValueError):
+            return jsonify({"error": f"Invalid order_index at step {idx}."}), 400
+        if not title:
+            return jsonify({"error": f"Step {idx + 1} title is required."}), 400
+        if len(title) > 255:
+            return jsonify({"error": f"Step {idx + 1} title too long."}), 400
+        if not description:
+            return jsonify({"error": f"Step {idx + 1} description is required."}), 400
+        validated_steps.append(
+            {
+                "title": title,
+                "description": description,
+                "order_index": order_index,
+            }
+        )
+
     assignment.steps.clear()
 
-    source_steps = steps_data or build_step_plan(
+    source_steps = validated_steps or build_step_plan(
         assignment.raw_instructions, assignment.language
     )
     for idx, step in enumerate(source_steps):
