@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { ProgressBar, Step } from "react-step-progress-bar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { AssignmentsProvider, useAssignments } from "./hooks/useAssignments";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -9,6 +10,7 @@ import { AssignmentOverviewPage } from "./pages/AssignmentOverviewPage";
 import { ConceptsPage } from "./pages/ConceptsPage";
 import { StepsPage } from "./pages/StepsPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
+import "react-step-progress-bar/styles.css";
 import "./styles/theme.css";
 import "./styles/layout.css";
 import "./styles/dashboard.css";
@@ -116,6 +118,14 @@ function Layout() {
     return stageList;
   }, [assignment, currentAssignmentId, location.pathname]);
 
+  const progressPercent = useMemo(() => {
+    if (!stages || stages.length <= 1) return 100;
+    const unlocked = assignment?.max_stage_unlocked ?? 0;
+    const furthestStage = Math.max(unlocked, currentStageIndex);
+    const percent = (furthestStage / (stages.length - 1)) * 100;
+    return Math.min(Math.max(percent, 0), 100);
+  }, [assignment?.max_stage_unlocked, currentStageIndex, stages]);
+
   const protectedRoute = (element: ReactElement) => {
     if (loading) {
       return (
@@ -137,36 +147,42 @@ function Layout() {
           <div className="nav-links">
             {stages && (
               <div className="progress-nav">
-                {stages.map((stage, idx) => {
-                  const isLocked = !stage.enabled;
-                  const unlockedThrough = assignment?.max_stage_unlocked ?? 0;
-                  const isComplete = idx <= unlockedThrough;
-                  const lineState =
-                    idx === stages.length - 1
-                      ? "hidden"
-                      : stages[idx + 1].enabled
-                        ? "complete"
-                        : "disabled";
-                  return (
-                    <div key={stage.key} className="progress-item">
-                      <button
-                        className={`progress-button ${stage.active ? "active" : ""} ${isLocked ? "disabled" : ""
-                          } ${isComplete ? "complete" : ""}`}
-                        onClick={() => !isLocked && navigate(stage.path)}
-                        disabled={isLocked}
-                        aria-label={stage.label}
-                      >
-                        <span className="progress-dot">{idx + 1}</span>
-                        <span className="progress-label">{stage.label}</span>
-                      </button>
-                      {lineState !== "hidden" && (
-                        <span className={`progress-line ${lineState}`}>
-                          <span className="fill" />
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                <ProgressBar
+                  percent={progressPercent}
+                  filledBackground="linear-gradient(90deg, var(--accent), var(--accent-2))"
+                  unfilledBackground="rgba(255, 255, 255, 0.08)"
+                  height={8}
+                  className="progress-bar"
+                >
+                  {stages.map((stage, idx) => {
+                    const isLocked = !stage.enabled;
+                    return (
+                      <Step key={stage.key} transition="scale">
+                        {({ accomplished }) => {
+                          const classes = [
+                            "progress-step",
+                            stage.active ? "active" : "",
+                            isLocked ? "disabled" : "",
+                            accomplished ? "complete" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ");
+                          return (
+                            <button
+                              className={classes}
+                              onClick={() => !isLocked && navigate(stage.path)}
+                              disabled={isLocked}
+                              aria-label={stage.label}
+                            >
+                              <span className="progress-dot">{idx + 1}</span>
+                              <span className="progress-label">{stage.label}</span>
+                            </button>
+                          );
+                        }}
+                      </Step>
+                    );
+                  })}
+                </ProgressBar>
               </div>
             )}
           </div>
