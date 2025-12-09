@@ -31,3 +31,69 @@
 .activity-card {
   min-height: 160px;
 }
+
+.activity-calendar {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow-x: auto;
+}
+
+.activity-calendar svg {
+  width: 100%;
+  min-width: 520px;
+  display: block;
+}
+
+.activity-calendar text {
+  fill: var(--activity-text);
+  font-family: var(--activity-font);
+  font-size: 11px;
+}
+
+.activity-calendar text.month-label {
+  fill: var(--activity-month-label);
+  font-weight: 700;
+}
+
+.activity-calendar text.weekday-label {
+  fill: var(--activity-text);
+}
+
+.activity-calendar .activity-cell {
+  width: var(--activity-size);
+  height: var(--activity-size);
+  rx: var(--activity-radius);
+  ry: var(--activity-radius);
+  stroke: var(--activity-border);
+  stroke-width: 1px;
+  transition: fill 80ms ease, stroke 80ms ease;
+}
+
+.activity-calendar .activity-cell.empty {
+  fill: var(--activity-empty);
+}
+
+.activity-calendar .activity-cell.inactive {
+  fill: var(--activity-inactive);
+}
+
+.activity-calendar .activity-cell.active {
+  fill: var(--activity-active);
+  stroke: rgba(0, 0, 0, 0.15);
+}
+
+.activity-calendar .activity-cell:hover {
+  fill: var(--activity-hover);
+  stroke: var(--activity-active);
+}
+
+.activity-calendar .activity-cell.active:hover {
+  filter: brightness(1.05);
+}
+
+.activity-calendar .activity-cell.month-start {
+  stroke-width: 1.4px;
+}

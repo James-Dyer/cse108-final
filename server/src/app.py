@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import json
 from functools import wraps
 import os
 from typing import List, Optional
@@ -87,6 +88,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    activity_map = db.Column(db.Text, default="{}")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -237,6 +239,45 @@ def require_auth(fn):
     return wrapper
 
 
+def parse_activity_map(user: User) -> dict:
+    raw = user.activity_map or "{}"
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    cleaned = {}
+    for key, value in data.items():
+        if isinstance(key, str):
+            cleaned[key] = bool(value)
+    return cleaned
+
+
+def save_activity_map(user: User, activity: dict) -> dict:
+    user.activity_map = json.dumps(activity, sort_keys=True)
+    user.updated_at = datetime.utcnow()
+    db.session.commit()
+    return activity
+
+
+def normalize_date_string(date_str: str) -> Optional[str]:
+    try:
+        parsed = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return parsed.date().isoformat()
+
+
+def ensure_today_marked(user: User) -> dict:
+    activity = parse_activity_map(user)
+    today = datetime.utcnow().date().isoformat()
+    if not activity.get(today):
+        activity[today] = True
+        save_activity_map(user, activity)
+    return activity
+
+
 @app.route("/api/health", methods=["GET"])
 def healthcheck():
     return jsonify({"status": "ok"})
@@ -280,6 +321,40 @@ def login():
 @require_auth
 def current_user():
     return jsonify({"user": g.current_user.to_dict()})
+
+
+@app.route("/api/activity", methods=["GET"])
+@require_auth
+def get_activity():
+    activity = ensure_today_marked(g.current_user)
+    return jsonify({"activity": activity})
+
+
+@app.route("/api/activity", methods=["PATCH"])
+@require_auth
+def update_activity():
+    data = request.get_json() or {}
+    date_str = (data.get("date") or "").strip()
+    active = data.get("active")
+
+    if not date_str:
+        return jsonify({"error": "date is required."}), 400
+
+    normalized_date = normalize_date_string(date_str)
+    if not normalized_date:
+        return jsonify({"error": "date must be YYYY-MM-DD."}), 400
+
+    if not isinstance(active, bool):
+        return jsonify({"error": "active must be a boolean."}), 400
+
+    activity = parse_activity_map(g.current_user)
+    if active:
+        activity[normalized_date] = True
+    else:
+        activity.pop(normalized_date, None)
+
+    save_activity_map(g.current_user, activity)
+    return jsonify({"activity": activity})
 
 
 @app.route("/api/assignments", methods=["GET"])
@@ -452,8 +527,26 @@ def ensure_assignment_schema():
             )
 
 
+def ensure_user_activity_schema():
+    inspector = inspect(db.engine)
+    columns = [col["name"] for col in inspector.get_columns("users")]
+    if "activity_map" not in columns:
+        with db.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN activity_map TEXT DEFAULT '{}'"
+                )
+            )
+            conn.execute(
+                text(
+                    "UPDATE users SET activity_map = '{}' WHERE activity_map IS NULL"
+                )
+            )
+
+
 with app.app_context():
     db.create_all()
+    ensure_user_activity_schema()
     ensure_assignment_schema()
 
 
