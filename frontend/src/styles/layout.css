@@ -200,7 +200,7 @@ textarea {
 .primary,
 .ghost {
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 8px 13px;
   border: 1px solid transparent;
   font-weight: 700;
   cursor: pointer;

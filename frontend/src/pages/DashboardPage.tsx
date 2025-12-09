@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAssignments } from "../hooks/useAssignments";
 import { useActivity } from "../hooks/useActivity";
@@ -16,8 +16,7 @@ export function DashboardPage({
   runtimeStatus = "ready",
 }: Props) {
   const { assignments, remove } = useAssignments();
-  const { activity, setDayActive } = useActivity();
-  const [pendingDate, setPendingDate] = useState<string | null>(null);
+  const { activity } = useActivity();
 
   const handleDelete = async (id: number) => {
     try {
@@ -25,18 +24,6 @@ export function DashboardPage({
       onNotify("Assignment removed.");
     } catch (error: any) {
       onNotify(error.message || "Delete failed.");
-    }
-  };
-
-  const handleToggleDay = async (date: string, nextActive: boolean) => {
-    setPendingDate(date);
-    try {
-      await setDayActive(date, nextActive);
-      onNotify(nextActive ? "Marked day as active." : "Marked day as inactive.");
-    } catch (error: any) {
-      onNotify(error.message || "Unable to update day.");
-    } finally {
-      setPendingDate(null);
     }
   };
 
@@ -95,17 +82,11 @@ export function DashboardPage({
           <ActivityCalendar
             activity={activity}
             months={6}
-            onToggleDay={handleToggleDay}
             themeOverrides={{
               activeColor: "#3cf5d0",
               hoverColor: "rgba(60, 245, 208, 0.22)",
             }}
           />
-          {pendingDate && (
-            <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-              Updating {pendingDate}...
-            </p>
-          )}
         </div>
       </section>
     </>
