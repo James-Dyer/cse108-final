@@ -122,6 +122,20 @@ Input: The instructions text
 Output: A set of 3–6 learning objectives, each with a title, a short explanation, an example, and optional pitfalls.
 Triggered: After the assignment summary has been generated
 
+Schema:
+```{
+  "learning_objectives": [
+    {
+      "id": "string",
+      "title": "string",
+      "summary": "string",
+      "why_it_matters": "string",
+      "used_in_this_assignment": "string"
+    }
+  ]
+}
+```
+
 **Step plan**
 Input: The instructions combined with the extracted learning objectives
 Output: An ordered list of steps. Needs a deterministic "Title:" and a generated short label for the step: (e.x. “Design the data structures”)

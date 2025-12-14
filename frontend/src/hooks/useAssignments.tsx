@@ -16,6 +16,15 @@ type Step = {
   order_index: number;
 };
 
+type LearningObjective = {
+  id?: number;
+  title: string;
+  summary: string;
+  why_it_matters?: string;
+  used_in_this_assignment?: string;
+  order_index: number;
+};
+
 type Assignment = {
   id: number;
   user_id: number;
@@ -25,6 +34,7 @@ type Assignment = {
   code?: string;
   max_stage_unlocked?: number;
   steps: Step[];
+  learning_objectives?: LearningObjective[];
 };
 
 type AssignmentsContextValue = {
@@ -155,4 +165,4 @@ export function useAssignments() {
   return ctx;
 }
 
-export type { Assignment, Step };
+export type { Assignment, Step, LearningObjective };

@@ -5,6 +5,7 @@ SQLite through SQLAlchemy ORM.
 - users
 - assignments (many assignments to users)
 - steps (the ordered plan)
+- learning_objectives (linked to assignments)
 
 ### users
 What: Stores user accounts for Code Lab.
@@ -42,6 +43,22 @@ id – UUID / integer PK
 assignment_id – FK → assignments.id, not null
 title – string, short label for the step AI generated (e.g. “Design the data structures”)
 description – text, detailed instructions for the step
+order_index – integer, defines ordering within the assignment (0, 1, 2, …)
+created_at – datetime
+updated_at – datetime
+
+### learning_objectives
+What: Stores the learning objectives for an assignment (mini-lessons).
+Created when: Generated when an assignment is created (deterministic fallback or LLM later), or when replaced via API.
+Owned by: Each learning objective belongs to exactly one assignment.
+
+Columns (MVP):
+id – integer PK
+assignment_id – FK → assignments.id, not null
+title – string, not null (<=255 chars)
+summary – text, not null
+why_it_matters – text, optional (default empty)
+used_in_this_assignment – text, optional (default empty)
 order_index – integer, defines ordering within the assignment (0, 1, 2, …)
 created_at – datetime
 updated_at – datetime

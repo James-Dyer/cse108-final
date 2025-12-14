@@ -10,8 +10,8 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import inspect, text
-from openai import OpenAI
 import jwt
+from openai import OpenAI
 
 
 load_dotenv()
@@ -132,8 +132,16 @@ class Assignment(db.Model):
         order_by="Step.order_index",
         cascade="all, delete-orphan",
     )
+    objectives = db.relationship(
+        "LearningObjective",
+        backref="assignment",
+        order_by="LearningObjective.order_index",
+        cascade="all, delete-orphan",
+    )
 
-    def to_dict(self, include_steps: bool = False) -> dict:
+    def to_dict(
+        self, include_steps: bool = False, include_objectives: bool = False
+    ) -> dict:
         payload = {
             "id": self.id,
             "user_id": self.user_id,
@@ -147,6 +155,10 @@ class Assignment(db.Model):
         }
         if include_steps:
             payload["steps"] = [step.to_dict() for step in self.steps]
+        if include_objectives:
+            payload["learning_objectives"] = [
+                objective.to_dict() for objective in self.objectives
+            ]
         return payload
 
 
@@ -177,6 +189,37 @@ class Step(db.Model):
         }
 
 
+class LearningObjective(db.Model):
+    __tablename__ = "learning_objectives"
+
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(
+        db.Integer, db.ForeignKey("assignments.id"), nullable=False
+    )
+    title = db.Column(db.String(255), nullable=False)
+    summary = db.Column(db.Text, nullable=False)
+    why_it_matters = db.Column(db.Text, default="", nullable=False)
+    used_in_this_assignment = db.Column(db.Text, default="", nullable=False)
+    order_index = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "assignment_id": self.assignment_id,
+            "title": self.title,
+            "summary": self.summary,
+            "why_it_matters": self.why_it_matters,
+            "used_in_this_assignment": self.used_in_this_assignment,
+            "order_index": self.order_index,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
 def build_step_plan(raw_instructions: str, language: str) -> List[dict]:
     """Deterministic fall-back for plan generation in lieu of an LLM."""
     trimmed = raw_instructions.strip()
@@ -201,8 +244,36 @@ def build_step_plan(raw_instructions: str, language: str) -> List[dict]:
     ]
 
 
+def build_learning_objectives(raw_instructions: str) -> List[dict]:
+    """Deterministic fall-back objectives for when LLM is unavailable."""
+    headline = (raw_instructions.strip().split("\n")[0] or "This assignment")[:80]
+    return [
+        {
+            "title": "Clarify the goal",
+            "summary": f"Rewrite the brief in your own words. Key line: {headline}",
+            "why_it_matters": "Ensures you solve the intended problem and avoid rework.",
+            "used_in_this_assignment": "Sets the scope for your plan and tests.",
+            "order_index": 0,
+        },
+        {
+            "title": "Testing mindset",
+            "summary": "List a happy-path and edge-case test before coding.",
+            "why_it_matters": "Catches misunderstandings early.",
+            "used_in_this_assignment": "Guides how you validate each step.",
+            "order_index": 1,
+        },
+        {
+            "title": "Decompose the work",
+            "summary": "Break the problem into smaller functions or phases.",
+            "why_it_matters": "Keeps code modular and easier to debug.",
+            "used_in_this_assignment": "Informs your step plan and function boundaries.",
+            "order_index": 2,
+        },
+    ]
+
+
 def serialize_assignment(assignment: Assignment) -> dict:
-    return assignment.to_dict(include_steps=True)
+    return assignment.to_dict(include_steps=True, include_objectives=True)
 
 
 def generate_token(user: User) -> str:
@@ -369,7 +440,12 @@ def list_assignments():
         .all()
     )
     return jsonify(
-        {"assignments": [a.to_dict(include_steps=True) for a in assignments]}
+        {
+            "assignments": [
+                a.to_dict(include_steps=True, include_objectives=True)
+                for a in assignments
+            ]
+        }
     )
 
 
@@ -411,6 +487,17 @@ def create_assignment():
             )
         )
 
+    for idx, objective in enumerate(build_learning_objectives(instructions)):
+        assignment.objectives.append(
+            LearningObjective(
+                title=objective.get("title", "")[:255],
+                summary=objective.get("summary", ""),
+                why_it_matters=objective.get("why_it_matters", ""),
+                used_in_this_assignment=objective.get("used_in_this_assignment", ""),
+                order_index=objective.get("order_index", idx),
+            )
+        )
+
     db.session.add(assignment)
     db.session.commit()
 
@@ -443,10 +530,56 @@ def generate_assignmnet_overview(raw_instructions: str) -> str:
         - No title or headers
         - Output only the assignment content
     """
+    try:
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=prompt,
+            max_output_tokens=320,
+            temperature=0.2,
+        )
+        text = (response.output_text or "").strip()
+        if not text:
+            raise RuntimeError("LLM returned empty output.")
+        return text
+
+    except Exception as exc:
+        app.logger.error("LLM overview generation failed", exc_info=exc)
+        raise RuntimeError("Assignment overview generation failed.") from exc
 
 
-def generate_assignment_learning_objectives():
-    return 0
+def generate_assignment_learning_objectives(raw_instructions: str) -> str:
+    prompt = f"""
+        Given instructions for an assignment, generate a deterministic JSON object containing a list of Learning Objectives.
+        Each learning objective represents a core skill or idea the student will practice while completing the assignment.
+
+        For each learning objective, include:
+        - title: a short, human-readable name
+        - summary: a one-sentence explanation of the concept
+        - why_it_matters: a one-sentence explanation of its general importance
+        - used_in_this_assignment: a one-sentence description of where the concept appears in this assignment
+
+        Assignment Instructions:
+        {raw_instructions}
+
+        Rules:
+        - Do not include implementation steps, code, or instructions.
+        - Output must be valid JSON and nothing else.
+    """
+    try:
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=prompt,
+            max_output_tokens=480,
+            temperature=0.25,
+        )
+        text = (response.output_text or "").strip()
+        if not text:
+            raise RuntimeError("LLM returned empty output.")
+        return text
+
+    except Exception as exc:
+        app.logger.error("LLM learning objective generation failed", exc_info=exc)
+        raise RuntimeError("Learning objective generation failed.") from exc
 
 
 @app.route("/api/assignments/<int:assignment_id>", methods=["GET"])
@@ -517,6 +650,80 @@ def replace_steps(assignment_id: int):
                 title=step.get("title") or f"Step {idx + 1}",
                 description=step.get("description") or "",
                 order_index=step.get("order_index", idx),
+            )
+        )
+
+    db.session.commit()
+    return jsonify({"assignment": serialize_assignment(assignment)})
+
+
+@app.route("/api/assignments/<int:assignment_id>/objectives", methods=["POST"])
+@require_auth
+def replace_objectives(assignment_id: int):
+    assignment = get_assignment_or_404(assignment_id)
+    if not assignment or assignment.user_id != g.current_user.id:
+        return jsonify({"error": "Assignment not found."}), 404
+
+    data = request.get_json() or {}
+    objectives_data = data.get("learning_objectives") or []
+
+    if not isinstance(objectives_data, list):
+        return jsonify({"error": "learning_objectives payload must be a list."}), 400
+
+    validated_objectives = []
+    for idx, objective in enumerate(objectives_data):
+        title = (objective.get("title") or "").strip()
+        summary = (objective.get("summary") or "").strip()
+        why_it_matters = (objective.get("why_it_matters") or "").strip()
+        used = (objective.get("used_in_this_assignment") or "").strip()
+        order_index = objective.get("order_index", idx)
+        try:
+            order_index = int(order_index)
+        except (TypeError, ValueError):
+            return (
+                jsonify({"error": f"Invalid order_index at learning objective {idx}."}),
+                400,
+            )
+        if not title:
+            return (
+                jsonify({"error": f"Learning objective {idx + 1} title is required."}),
+                400,
+            )
+        if len(title) > 255:
+            return (
+                jsonify({"error": f"Learning objective {idx + 1} title too long."}),
+                400,
+            )
+        if not summary:
+            return (
+                jsonify(
+                    {"error": f"Learning objective {idx + 1} summary is required."}
+                ),
+                400,
+            )
+        validated_objectives.append(
+            {
+                "title": title,
+                "summary": summary,
+                "why_it_matters": why_it_matters,
+                "used_in_this_assignment": used,
+                "order_index": order_index,
+            }
+        )
+
+    assignment.objectives.clear()
+
+    source_objectives = validated_objectives or build_learning_objectives(
+        assignment.raw_instructions
+    )
+    for idx, objective in enumerate(source_objectives):
+        assignment.objectives.append(
+            LearningObjective(
+                title=objective.get("title", "")[:255],
+                summary=objective.get("summary", ""),
+                why_it_matters=objective.get("why_it_matters", ""),
+                used_in_this_assignment=objective.get("used_in_this_assignment", ""),
+                order_index=objective.get("order_index", idx),
             )
         )
 

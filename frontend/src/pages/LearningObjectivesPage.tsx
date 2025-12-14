@@ -1,75 +1,74 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useMemo } from "react";
-import { useAssignments } from "../hooks/useAssignments";
+import { useAssignments, type LearningObjective } from "../hooks/useAssignments";
 import { AssignmentProgressNav } from "../components/AssignmentProgressNav";
 
 type Props = {
   onNotify: (msg: string) => void;
 };
 
-type Objective = {
-  tag: string;
-  summary: string;
-  example: string;
-  pitfalls?: string;
-};
-
-const deriveObjectives = (raw: string): Objective[] => {
+const deriveObjectives = (raw: string): LearningObjective[] => {
   const lowered = raw.toLowerCase();
-  const objectives: Objective[] = [];
+  const objectives: LearningObjective[] = [];
 
-  const addUnique = (objective: Objective) => {
-    if (!objectives.find((c) => c.tag === objective.tag)) objectives.push(objective);
+  const addUnique = (objective: LearningObjective) => {
+    if (!objectives.find((c) => c.title === objective.title)) objectives.push(objective);
   };
 
   if (lowered.includes("loop") || lowered.includes("iterate")) {
     addUnique({
-      tag: "Iteration patterns",
+      title: "Iteration patterns",
       summary: "Choose between for/while, and keep counters and bounds obvious.",
-      example: "for i, value in enumerate(items): ...",
-      pitfalls: "Off-by-one errors and mutating while iterating.",
+      why_it_matters: "Prevents off-by-one bugs and keeps control flow clear.",
+      used_in_this_assignment: "Use clear indices or enumerations in loops.",
+      order_index: objectives.length,
     });
   }
 
   if (lowered.includes("recursion")) {
     addUnique({
-      tag: "Recursion hygiene",
+      title: "Recursion hygiene",
       summary: "Define a base case, then shrink the input before recurring.",
-      example: "if not nums: return 0\nreturn nums[0] + sum_rest(nums[1:])",
-      pitfalls: "Missing base cases or forgetting to return recursion results.",
+      why_it_matters: "Avoids infinite loops and stack overflows.",
+      used_in_this_assignment: "Show base cases explicitly and return recursive results.",
+      order_index: objectives.length,
     });
   }
 
   if (lowered.includes("string")) {
     addUnique({
-      tag: "String parsing",
+      title: "String parsing",
       summary: "Normalize casing and strip whitespace before comparison.",
-      example: 'clean = text.strip().lower().split(",")',
-      pitfalls: "Comparing raw user input without trimming.",
+      why_it_matters: "Reduces brittle comparisons and hidden whitespace bugs.",
+      used_in_this_assignment: "Call .strip().lower() on inputs before logic.",
+      order_index: objectives.length,
     });
   }
 
   if (lowered.includes("file") || lowered.includes("input")) {
     addUnique({
-      tag: "Input handling",
+      title: "Input handling",
       summary: "Validate shape early; fail fast with helpful messages.",
-      example: "if len(parts) != 3: raise ValueError('Need 3 fields')",
-      pitfalls: "Silently accepting malformed rows and crashing later.",
+      why_it_matters: "Prevents crashes and makes debugging easier.",
+      used_in_this_assignment: "Check counts and types before processing input.",
+      order_index: objectives.length,
     });
   }
 
-  const baseline: Objective[] = [
+  const baseline: LearningObjective[] = [
     {
-      tag: "Prompt synthesis",
+      title: "Prompt synthesis",
       summary: "Rewrite the prompt in your own words; capture inputs, outputs, and constraints.",
-      example: "Input: list of grades. Output: curved grades rounded to int.",
-      pitfalls: "Starting code before clarifying edge cases.",
+      why_it_matters: "Clarifies the target so you build the right thing.",
+      used_in_this_assignment: "Write a 2–3 sentence summary before coding.",
+      order_index: objectives.length,
     },
     {
-      tag: "Testing mindset",
+      title: "Testing mindset",
       summary: "Craft tiny examples before full runs; hit happy path and one edge case.",
-      example: "Given [1,2,3], expect [2,4,6]. Edge: [].",
-      pitfalls: "Only testing the sample input from the prompt.",
+      why_it_matters: "Catches mistakes early and builds confidence.",
+      used_in_this_assignment: "List one happy-path and one edge-case test.",
+      order_index: objectives.length + 1,
     },
   ];
 
@@ -87,10 +86,16 @@ export function LearningObjectivesPage({ onNotify }: Props) {
     return getById(numeric);
   }, [assignmentId, getById]);
 
-  const objectives = useMemo(
-    () => deriveObjectives(assignment?.raw_instructions || ""),
-    [assignment]
-  );
+  const objectives = useMemo(() => {
+    const storedObjectives = assignment?.learning_objectives || [];
+    const source =
+      storedObjectives.length > 0
+        ? storedObjectives
+        : deriveObjectives(assignment?.raw_instructions || "");
+    return [...source].sort(
+      (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
+    );
+  }, [assignment]);
 
   if (!assignment) {
     onNotify("Assignment not found.");
@@ -124,15 +129,17 @@ export function LearningObjectivesPage({ onNotify }: Props) {
         </div>
         <div className="objective-grid">
           {objectives.map((objective) => (
-            <article key={objective.tag} className="objective-card">
-              <span className="objective-tag">{objective.tag}</span>
+            <article key={objective.title} className="objective-card">
+              <span className="objective-tag">{objective.title}</span>
               <p>{objective.summary}</p>
-              <p className="muted small">
-                <strong>Example:</strong> {objective.example}
-              </p>
-              {objective.pitfalls && (
+              {objective.why_it_matters && (
                 <p className="muted small">
-                  <strong>Watch for:</strong> {objective.pitfalls}
+                  <strong>Why it matters:</strong> {objective.why_it_matters}
+                </p>
+              )}
+              {objective.used_in_this_assignment && (
+                <p className="muted small">
+                  <strong>Use it here:</strong> {objective.used_in_this_assignment}
                 </p>
               )}
             </article>
