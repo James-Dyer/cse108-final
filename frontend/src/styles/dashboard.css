@@ -1,11 +1,21 @@
 .grid.dashboard-grid {
   grid-template-columns: 1fr 0.5fr;
+  align-items: start;
+  /* prevent cards from stretching to match each other's height */
 }
 
 @media (max-width: 900px) {
   .grid.dashboard-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.dashboard-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: stretch;
+  width: 100%;
 }
 
 .assignment-list {
@@ -31,8 +41,8 @@
 
 .activity-card {
   min-height: auto;
-  align-self: start;
-  height: 58%
+  align-self: stretch;
+  height: 250px;
 }
 
 .activity-calendar {
@@ -115,4 +125,57 @@
 
 .activity-calendar .react-calendar-heatmap-weekday-labels {
   transform: translate(25px, 5px) !important;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.dashboard-right .panel {
+  width: 100%;
+}
+
+.profile-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #26d7b2, #0c7283);
+  color: #041018;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-label {
+  margin: 0;
+  font-size: 12px;
+}
+
+.profile-email {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
 }

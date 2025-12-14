@@ -8,7 +8,7 @@
     radial-gradient(circle at 90% 10%, rgba(255, 184, 108, 0.18), transparent 20%),
     linear-gradient(135deg, #05080f 0%, #0b1020 60%, #05080f 100%);
   min-height: 100vh;
-  padding: 18px 32px 64px;
+  padding: 18px 32px 10px;
 }
 
 .topbar {

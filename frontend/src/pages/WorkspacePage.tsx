@@ -32,7 +32,7 @@ export function WorkspacePage({ onNotify }: Props) {
   const [isHintOpen, setIsHintOpen] = useState(false);
   const [dragging, setDragging] = useState<"col" | "row" | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(360);
-  const [codeHeight, setCodeHeight] = useState(380);
+  const [codeHeight, setCodeHeight] = useState(350);
   const [isNarrow, setIsNarrow] = useState(false);
   const [code, setCode] = useState(DEFAULT_CODE);
   const [lastSavedCode, setLastSavedCode] = useState(DEFAULT_CODE);
@@ -228,7 +228,7 @@ export function WorkspacePage({ onNotify }: Props) {
   }
 
   return (
-    <section className="page-shell">
+    <section className="page-shell workspace-shell">
       <div className="breadcrumb">
         <Link className="nav-pill" to="/dashboard">
           ← Dashboard
@@ -369,7 +369,7 @@ export function WorkspacePage({ onNotify }: Props) {
                     {saveStatus === "saving"
                       ? "Saving..."
                       : saveStatus === "dirty"
-                        ? "Unsaved changes"
+                        ? "Saving..."
                         : saveStatus === "error"
                           ? "Save failed"
                           : "Saved"}
@@ -447,10 +447,8 @@ export function WorkspacePage({ onNotify }: Props) {
                 Reset console
               </button>
             </div>
-            <div className="window-body">
-              <div className="console">
-                <pre>{consoleText}</pre>
-              </div>
+            <div className="window-body console-body">
+              <pre className="console-output">{consoleText}</pre>
             </div>
           </div>
         </div>
