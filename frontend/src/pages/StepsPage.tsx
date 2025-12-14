@@ -54,8 +54,8 @@ export function StepsPage({ onNotify }: Props) {
         </div>
         <StepsList steps={orderedSteps} layout="flowchart" />
         <div className="button-row top-gap">
-          <Link className="ghost" to={`/assignments/${assignment.id}/concepts`}>
-            Back to concepts
+          <Link className="ghost" to={`/assignments/${assignment.id}/learning-objectives`}>
+            Back to learning objectives
           </Link>
           <Link className="primary" to={`/assignments/${assignment.id}/workspace`}>
             Open coding workspace

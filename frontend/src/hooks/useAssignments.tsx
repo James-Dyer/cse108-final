@@ -43,12 +43,12 @@ const AssignmentsContext = createContext<AssignmentsContextValue | undefined>(
 );
 
 export function AssignmentsProvider({ children }: { children: ReactNode }) {
-  const { token } = useAuth();
+  const { token, loading: authLoading } = useAuth();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(false);
 
   const refresh = async () => {
-    if (!token) return;
+    if (!token || authLoading) return;
     setLoading(true);
     try {
       const data = await apiFetch<{ assignments: Assignment[] }>(
@@ -62,12 +62,13 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!token) {
       setAssignments([]);
       return;
     }
     refresh();
-  }, [token]);
+  }, [token, authLoading]);
 
   const create = async (data: { title: string; raw_instructions: string }) => {
     if (!token) throw new Error("unauthorized");

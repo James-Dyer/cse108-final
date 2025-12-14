@@ -9,7 +9,7 @@ type ActivityResponse = {
 };
 
 export function useActivity() {
-  const { token } = useAuth();
+  const { token, loading: authLoading } = useAuth();
   const [activity, setActivity] = useState<ActivityMap>({});
   const [loading, setLoading] = useState(false);
 
@@ -18,6 +18,7 @@ export function useActivity() {
       setActivity({});
       return;
     }
+    if (authLoading) return;
     setLoading(true);
     try {
       const data = await apiFetch<ActivityResponse>("/api/activity", token);
@@ -25,7 +26,7 @@ export function useActivity() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, authLoading]);
 
   const setDayActive = useCallback(
     async (date: string, active: boolean) => {
@@ -43,12 +44,13 @@ export function useActivity() {
   );
 
   useEffect(() => {
+    if (authLoading) return;
     if (token) {
       refresh().catch(() => setActivity({}));
     } else {
       setActivity({});
     }
-  }, [token, refresh]);
+  }, [token, authLoading, refresh]);
 
   return {
     activity,

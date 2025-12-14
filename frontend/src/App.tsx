@@ -6,7 +6,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { AssignmentNewPage } from "./pages/AssignmentNewPage";
 import { AssignmentOverviewPage } from "./pages/AssignmentOverviewPage";
-import { ConceptsPage } from "./pages/ConceptsPage";
+import { LearningObjectivesPage } from "./pages/LearningObjectivesPage";
 import { StepsPage } from "./pages/StepsPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 import { STAGES, STAGE_KEYS, getStageIndexFromPath } from "./lib/stages";
@@ -106,7 +106,10 @@ function Layout() {
           <Route path="/dashboard" element={protectedRoute(<DashboardPage onNotify={setToast} />)} />
           <Route path="/assignments/new" element={protectedRoute(<AssignmentNewPage onNotify={setToast} />)} />
           <Route path="/assignments/:assignmentId" element={protectedRoute(<AssignmentOverviewPage onNotify={setToast} />)} />
-          <Route path="/assignments/:assignmentId/concepts" element={protectedRoute(<ConceptsPage onNotify={setToast} />)} />
+          <Route
+            path="/assignments/:assignmentId/learning-objectives"
+            element={protectedRoute(<LearningObjectivesPage onNotify={setToast} />)}
+          />
           <Route path="/assignments/:assignmentId/steps" element={protectedRoute(<StepsPage onNotify={setToast} />)} />
           <Route path="/assignments/:assignmentId/workspace" element={protectedRoute(<WorkspacePage onNotify={setToast} />)} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

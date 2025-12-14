@@ -1,5 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
-import { cloneElement } from "react";
+import type { CSSProperties, SVGProps } from "react";
 import CalendarHeatmap from "react-calendar-heatmap";
 import type { ActivityMap } from "../hooks/useActivity";
 
@@ -38,7 +37,7 @@ type ActivityCalendarProps = {
   onToggleDay?: (date: string, nextActive: boolean) => void;
 };
 
-const MONTH_LABELS: [
+type MonthLabels = [
   string,
   string,
   string,
@@ -51,7 +50,9 @@ const MONTH_LABELS: [
   string,
   string,
   string,
-] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+];
+
+const MONTH_LABELS: MonthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 type CalendarValue = {
   date: string;
@@ -114,7 +115,8 @@ export function ActivityCalendar({
   const desiredGutter = theme.gutter;
   const calendarGutter = desiredGutter + (squareSize - LIBRARY_SQUARE_SIZE);
   const monthToOmit = start.getMonth();
-  const monthLabels = MONTH_LABELS.map((label, idx) => (idx === monthToOmit ? "" : label));
+  const monthLabels = [...MONTH_LABELS] as MonthLabels;
+  monthLabels[monthToOmit] = "";
 
   const style = {
     "--activity-active": theme.activeColor,
@@ -156,16 +158,19 @@ export function ActivityCalendar({
           const nextActive = !activity[value.date];
           onToggleDay(value.date, nextActive);
         }}
-        transformDayElement={(rect: ReactElement<SVGRectElement>) => {
+        transformDayElement={(elementProps: SVGProps<SVGRectElement>) => {
           // Adjust the internal 10px square to match our theme size and gutter.
-          const x = (rect.props.x || 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
-          const y = (rect.props.y || 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
-          return cloneElement(rect, {
-            width: squareSize,
-            height: squareSize,
-            x,
-            y,
-          });
+          const x = Number(elementProps.x ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+          const y = Number(elementProps.y ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+          return (
+            <rect
+              {...elementProps}
+              width={squareSize}
+              height={squareSize}
+              x={x}
+              y={y}
+            />
+          );
         }}
       />
     </div>

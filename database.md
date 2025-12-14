@@ -34,7 +34,7 @@ updated_at – datetime
 
 ### steps
 What: Stores the ordered list of instructional steps generated for an assignment. 
-Created when: Generated after the assignment is created and analyzed (summary + concept extraction). The system produces a list of steps, which are then persisted.
+Created when: Generated after the assignment is created and analyzed (summary + learning objective extraction). The system produces a list of steps, which are then persisted.
 Owned by: Each step belongs to exactly one assignment.
 
 Columns (MVP):

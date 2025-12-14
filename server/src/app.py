@@ -10,6 +10,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import inspect, text
+from openai import OpenAI
 import jwt
 
 
@@ -26,6 +27,9 @@ env_origins = os.environ.get("ALLOWED_ORIGINS", "")
 ALLOWED_ORIGINS = [
     origin.strip() for origin in env_origins.split(",") if origin.strip()
 ] or DEFAULT_ALLOWED_ORIGINS
+
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+client = OpenAI()
 
 DEFAULT_SAMPLE_CODE = """# Write Python here
 
@@ -133,14 +137,14 @@ class Assignment(db.Model):
         payload = {
             "id": self.id,
             "user_id": self.user_id,
-        "title": self.title,
-        "raw_instructions": self.raw_instructions,
-        "language": self.language,
-        "code": self.code,
-        "max_stage_unlocked": self.max_stage_unlocked,
-        "created_at": self.created_at.isoformat(),
-        "updated_at": self.updated_at.isoformat(),
-    }
+            "title": self.title,
+            "raw_instructions": self.raw_instructions,
+            "language": self.language,
+            "code": self.code,
+            "max_stage_unlocked": self.max_stage_unlocked,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
         if include_steps:
             payload["steps"] = [step.to_dict() for step in self.steps]
         return payload
@@ -205,8 +209,7 @@ def generate_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
         "email": user.email,
-        "exp": datetime.utcnow()
-        + timedelta(minutes=app.config["JWT_TTL_MINUTES"]),
+        "exp": datetime.utcnow() + timedelta(minutes=app.config["JWT_TTL_MINUTES"]),
     }
     return jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
 
@@ -219,9 +222,7 @@ def require_auth(fn):
             return jsonify({"error": "Authorization header missing"}), 401
         token = auth_header.split(" ", 1)[1]
         try:
-            payload = jwt.decode(
-                token, app.config["JWT_SECRET"], algorithms=["HS256"]
-            )
+            payload = jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"])
             user_id = payload.get("sub")
             try:
                 user_id = int(user_id)
@@ -420,6 +421,34 @@ def get_assignment_or_404(assignment_id: int) -> Optional[Assignment]:
     return Assignment.query.filter_by(id=assignment_id).first()
 
 
+# Ingest raw assignment instructions and output an assignment overview. Triggered when the assignment is first created.
+def generate_assignmnet_overview(raw_instructions: str) -> str:
+    prompt = f"""
+        Generate a student-facing assignment overview.
+        Do not include any introductory or meta sentences (e.g., “This assignment requires…”, “In this assignment…”, or explanations of what the assignment is).
+        Do not include any headers.
+        Begin the output starting with the summary.
+
+        If applicable, include:
+        - A brief summary (1–2 sentences)
+        - A requirements list
+        - An example
+        - Any necessary notes
+
+        Assignment instructions:
+        {raw_instructions}
+
+        Rules:
+        - Maximum 200 words
+        - No title or headers
+        - Output only the assignment content
+    """
+
+
+def generate_assignment_learning_objectives():
+    return 0
+
+
 @app.route("/api/assignments/<int:assignment_id>", methods=["GET"])
 @require_auth
 def retrieve_assignment(assignment_id: int):
@@ -576,14 +605,10 @@ def ensure_user_activity_schema():
     if "activity_map" not in columns:
         with db.engine.begin() as conn:
             conn.execute(
-                text(
-                    "ALTER TABLE users ADD COLUMN activity_map TEXT DEFAULT '{}'"
-                )
+                text("ALTER TABLE users ADD COLUMN activity_map TEXT DEFAULT '{}'")
             )
             conn.execute(
-                text(
-                    "UPDATE users SET activity_map = '{}' WHERE activity_map IS NULL"
-                )
+                text("UPDATE users SET activity_map = '{}' WHERE activity_map IS NULL")
             )
 
 

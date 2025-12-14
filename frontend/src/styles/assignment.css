@@ -177,24 +177,24 @@
   }
 }
 
-.concept-grid {
+.objective-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
 }
 
-.concept-header {
+.objective-header {
   align-items: flex-start;
 }
 
-.concept-card {
+.objective-card {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.02);
 }
 
-.concept-tag {
+.objective-tag {
   display: inline-block;
   padding: 6px 10px;
   border-radius: 10px;

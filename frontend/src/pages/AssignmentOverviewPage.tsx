@@ -58,8 +58,8 @@ export function AssignmentOverviewPage({ onNotify }: Props) {
           </p>
         </div>
         <div className="button-row top-gap">
-          <Link className="primary" to={`/assignments/${assignment.id}/concepts`}>
-            View concepts
+          <Link className="primary" to={`/assignments/${assignment.id}/learning-objectives`}>
+            View learning objectives
           </Link>
         </div>
       </div>

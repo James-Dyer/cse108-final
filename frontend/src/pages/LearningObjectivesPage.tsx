@@ -7,19 +7,19 @@ type Props = {
   onNotify: (msg: string) => void;
 };
 
-type Concept = {
+type Objective = {
   tag: string;
   summary: string;
   example: string;
   pitfalls?: string;
 };
 
-const deriveConcepts = (raw: string): Concept[] => {
+const deriveObjectives = (raw: string): Objective[] => {
   const lowered = raw.toLowerCase();
-  const concepts: Concept[] = [];
+  const objectives: Objective[] = [];
 
-  const addUnique = (concept: Concept) => {
-    if (!concepts.find((c) => c.tag === concept.tag)) concepts.push(concept);
+  const addUnique = (objective: Objective) => {
+    if (!objectives.find((c) => c.tag === objective.tag)) objectives.push(objective);
   };
 
   if (lowered.includes("loop") || lowered.includes("iterate")) {
@@ -58,7 +58,7 @@ const deriveConcepts = (raw: string): Concept[] => {
     });
   }
 
-  const baseline: Concept[] = [
+  const baseline: Objective[] = [
     {
       tag: "Prompt synthesis",
       summary: "Rewrite the prompt in your own words; capture inputs, outputs, and constraints.",
@@ -73,10 +73,10 @@ const deriveConcepts = (raw: string): Concept[] => {
     },
   ];
 
-  return [...concepts, ...baseline].slice(0, 6);
+  return [...objectives, ...baseline].slice(0, 6);
 };
 
-export function ConceptsPage({ onNotify }: Props) {
+export function LearningObjectivesPage({ onNotify }: Props) {
   const { assignmentId } = useParams();
   const { getById } = useAssignments();
 
@@ -87,8 +87,8 @@ export function ConceptsPage({ onNotify }: Props) {
     return getById(numeric);
   }, [assignmentId, getById]);
 
-  const concepts = useMemo(
-    () => deriveConcepts(assignment?.raw_instructions || ""),
+  const objectives = useMemo(
+    () => deriveObjectives(assignment?.raw_instructions || ""),
     [assignment]
   );
 
@@ -103,36 +103,36 @@ export function ConceptsPage({ onNotify }: Props) {
         <Link className="nav-pill" to="/dashboard">
           ← Dashboard
         </Link>
-        <span className="muted">Concept breakdown</span>
+        <span className="muted">Learning objectives</span>
         <div className="progress-inline">
           <AssignmentProgressNav
             assignmentId={assignment.id}
-            currentStage="concepts"
+            currentStage="objectives"
             maxStageUnlocked={assignment.max_stage_unlocked ?? 0}
           />
         </div>
       </div>
       <div className="panel">
-        <div className="panel-header concept-header">
+        <div className="panel-header objective-header">
           <div>
-            <h2>Concept mini-lessons for this assignment</h2>
+            <h2>Learning objectives for this assignment</h2>
             <p className="muted">
               Derived deterministically from your instructions so you can prep before coding.
             </p>
           </div>
-          <span className="chip subtle">{concepts.length} concepts</span>
+          <span className="chip subtle">{objectives.length} objectives</span>
         </div>
-        <div className="concept-grid">
-          {concepts.map((concept) => (
-            <article key={concept.tag} className="concept-card">
-              <span className="concept-tag">{concept.tag}</span>
-              <p>{concept.summary}</p>
+        <div className="objective-grid">
+          {objectives.map((objective) => (
+            <article key={objective.tag} className="objective-card">
+              <span className="objective-tag">{objective.tag}</span>
+              <p>{objective.summary}</p>
               <p className="muted small">
-                <strong>Example:</strong> {concept.example}
+                <strong>Example:</strong> {objective.example}
               </p>
-              {concept.pitfalls && (
+              {objective.pitfalls && (
                 <p className="muted small">
-                  <strong>Watch for:</strong> {concept.pitfalls}
+                  <strong>Watch for:</strong> {objective.pitfalls}
                 </p>
               )}
             </article>

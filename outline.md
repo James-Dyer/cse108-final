@@ -1,7 +1,7 @@
 # Code Lab
 A web app where CS students can paste or upload a coding assignment, and the system automatically:
 - Understands the assignment,
-- Pulls out the key CS concepts,
+- Pulls out the key learning objectives,
 - Builds a step-by-step plan,
 - Gives them a guided coding workspace with hints and tests,
 - Tracks what they learned over time.
@@ -38,16 +38,16 @@ Important edge cases or tricky parts, as well as any important information that 
 
 UI: a “Assignment Summary” page with clear instructions, not chat bubbles.
 
-### Step 4: Concept breakdown
+### Step 4: Learning objectives
 the student clicks the "Let's get started!" button or something similar, a fun animation plays, and...
 
-The system identifies relevant CS topics.
-For each concept, it generates a mini-lesson card with:
+The system identifies relevant CS topics and frames them as learning objectives.
+For each objective, it generates a mini-lesson card with:
 - Short explanation
 - Simple example
 - Common mistakes (optional)
 
-UI: a Concepts page with cards you can open to read (modal style)
+UI: a Learning Objectives page with cards you can open to read (modal style)
 
 ### Step 5: Guided coding workspace
 
@@ -96,14 +96,14 @@ Important: You design prompts so the AI critiques and nudges, but doesn’t just
 
 - users can start multiple assignments, manage (delete) their assignments from the dashboard page. 
 - Individual use only for now, students sign up and log in, no cross-collaboration
-- Primary goal: “Get assignments done as efficiently as possible while still learning concepts instead of just having answers fed to the student"
+- Primary goal: “Get assignments done as efficiently as possible while still learning objectives instead of just having answers fed to the student"
 - Assignments will be small lab-style exercises.
 - for mvp we will be dealing with only single-file Python scripts, similar to the format of leetcode problems or simpler lab assignments. 
 
 ## LLM Behavior & Prompting Questions
 - We will use the LLM for:
     Step 3: Summarizing the assignment.
-    Step 4: Identifying concepts and generating mini-lessons.
+    Step 4: Identifying learning objectives and generating mini-lessons.
     Step 5: Generating:
         the ordered list of steps
         the hints
@@ -114,18 +114,18 @@ step plan needs to be in a deterministic format so we can parse and display to t
 
 **Assignment summary**
 Input: Raw instructions text
-Output: A summary of the assignment, bullet points, and additional contextual information Needs a deterministic "Title:" and a generated short title for the assignment (e.x. “Lab 01: Arrays”)
+Output: A summary of the assignment, bullet points, and additional contextual information 
 Triggered: When an assignment is first created
 
-**Concept extraction**
+**Learning Objectives**
 Input: The instructions text
-Output: Concept tags along with short explanatory blurbs
+Output: A set of 3–6 learning objectives, each with a title, a short explanation, an example, and optional pitfalls.
 Triggered: After the assignment summary has been generated
 
 **Step plan**
-Input: The instructions combined with the extracted concepts
+Input: The instructions combined with the extracted learning objectives
 Output: An ordered list of steps. Needs a deterministic "Title:" and a generated short label for the step: (e.x. “Design the data structures”)
-Triggered: After concept extraction
+Triggered: After learning objective extraction
 
 **Hint generation**
 Input: The current step, the learner’s current code, and their history

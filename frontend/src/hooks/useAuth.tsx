@@ -32,34 +32,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() =>
     localStorage.getItem("cl_token")
   );
-  const [loading, setLoading] = useState(false);
+  const [validatedToken, setValidatedToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(() =>
+    Boolean(localStorage.getItem("cl_token"))
+  );
 
-  useEffect(() => {
-    const hydrate = async () => {
-      if (!token || user || loading) return;
-      setLoading(true);
-      try {
-        const data = await apiFetch<{ user: User }>("/api/auth/me", token);
-        setUser(data.user);
-        localStorage.setItem("cl_user", JSON.stringify(data.user));
-      } catch (error) {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem("cl_user");
-        localStorage.removeItem("cl_token");
-      } finally {
-        setLoading(false);
-      }
-    };
-    hydrate();
-  }, [token, user, loading]);
+  const clearSession = () => {
+    setUser(null);
+    setToken(null);
+    setValidatedToken(null);
+    setLoading(false);
+    localStorage.removeItem("cl_user");
+    localStorage.removeItem("cl_token");
+  };
 
   const persistSession = (nextUser: User, nextToken: string) => {
     setUser(nextUser);
     setToken(nextToken);
+    setValidatedToken(nextToken);
+    setLoading(false);
     localStorage.setItem("cl_user", JSON.stringify(nextUser));
     localStorage.setItem("cl_token", nextToken);
   };
+
+  useEffect(() => {
+    if (!token) {
+      clearSession();
+      return;
+    }
+
+    if (validatedToken === token) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const hydrate = async () => {
+      setLoading(true);
+      try {
+        const data = await apiFetch<{ user: User }>("/api/auth/me", token);
+        if (cancelled) return;
+        setUser(data.user);
+        setValidatedToken(token);
+        localStorage.setItem("cl_user", JSON.stringify(data.user));
+      } catch (error) {
+        if (cancelled) return;
+        clearSession();
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, validatedToken]);
 
   const login = async (email: string, password: string) => {
     const data = await apiFetch<{ user: User; token: string }>(
@@ -85,12 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persistSession(data.user, data.token);
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("cl_user");
-    localStorage.removeItem("cl_token");
-  };
+  const logout = clearSession;
 
   const value = useMemo(
     () => ({ user, token, loading, login, register, logout }),
