@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pydantic
+werkzeug
+openai>=1.0.0
+python-dotenv
