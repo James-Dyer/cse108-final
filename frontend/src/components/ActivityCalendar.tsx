@@ -160,23 +160,27 @@ export function ActivityCalendar({
         }}
         transformDayElement={(element) => {
           // Adjust the internal 10px square to match our theme size and gutter.
-          const props = (element as React.ReactElement).props || {};
-          const key = (element as React.ReactElement).key;
-          const x = Number(props.x ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
-          const y = Number(props.y ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
-          const { x: _x, y: _y, width: _w, height: _h, ...rest } = props;
-          return React.cloneElement(
-            element as React.ReactElement,
-            {
-              ...rest,
-              key: key ?? undefined,
-              width: squareSize,
-              height: squareSize,
-              x,
-              y,
-            },
-            null
-          );
+          const dayElement = element as React.ReactElement<React.SVGProps<SVGRectElement>>;
+          const key = dayElement.key;
+          const {
+            x: originalX = 0,
+            y: originalY = 0,
+            width: _w,
+            height: _h,
+            ...rest
+          } = dayElement.props;
+
+          const x = Number(originalX) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+          const y = Number(originalY) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+
+          return React.cloneElement(dayElement, {
+            ...rest,
+            key: key ?? undefined,
+            width: squareSize,
+            height: squareSize,
+            x,
+            y,
+          });
         }}
       />
     </div>

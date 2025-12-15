@@ -1,6 +1,6 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useEffect, useMemo } from "react";
-import { useAssignments, type LearningObjective } from "../hooks/useAssignments";
+import { useAssignments } from "../hooks/useAssignments";
 import { AssignmentProgressNav } from "../components/AssignmentProgressNav";
 
 type Props = {
