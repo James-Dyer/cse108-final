@@ -16,9 +16,6 @@ type Props = {
 const DEFAULT_CODE = `# Write Python here
 
 def main():
-    sample = [1, 2, 3]
-    doubled = [x * 2 for x in sample]
-    print("Doubled values:", doubled)
 
 if __name__ == "__main__":
     main()
@@ -47,6 +44,8 @@ export function WorkspacePage({ onNotify }: Props) {
   const codeStackRef = useRef<HTMLDivElement | null>(null);
   const [hintText, setHintText] = useState("Generating hint...");
   const [hintStatus, setHintStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [hintRequestId, setHintRequestId] = useState(0);
+  const codeSnapshotRef = useRef(DEFAULT_CODE);
 
   const assignment = useMemo(() => {
     if (!assignmentId) return null;
@@ -138,13 +137,21 @@ export function WorkspacePage({ onNotify }: Props) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [isHintOpen]);
+  // Only request a hint when the modal opens or when explicitly refreshed,
+  // instead of re-fetching on every code change.
   useEffect(() => {
-    if (!isHintOpen || !assignment || !token) return;
+    if (!isHintOpen || !assignment) return;
+    codeSnapshotRef.current = code;
+    setHintRequestId((id) => id + 1);
+  }, [assignment?.id, isHintOpen]);
+
+  useEffect(() => {
+    if (!isHintOpen || !assignment || !token || hintRequestId === 0) return;
     const fetchHint = async () => {
       setHintStatus("loading");
       setHintText("Generating hint...");
       try {
-        const payload: any = { code };
+        const payload: any = { code: codeSnapshotRef.current };
         if (orderedSteps.length > 0) {
           payload.step_index = 0;
         }
@@ -164,7 +171,13 @@ export function WorkspacePage({ onNotify }: Props) {
       }
     };
     fetchHint();
-  }, [assignment, code, isHintOpen, orderedSteps.length, token]);
+  }, [assignment?.id, hintRequestId, isHintOpen, orderedSteps.length, token]);
+
+  const refreshHint = () => {
+    if (!assignment || !token) return;
+    codeSnapshotRef.current = code;
+    setHintRequestId((id) => id + 1);
+  };
 
   const runCode = async () => {
     if (!pyodide || pyodideStatus !== "ready") {
@@ -430,7 +443,7 @@ export function WorkspacePage({ onNotify }: Props) {
                         ? "Saving..."
                         : saveStatus === "error"
                           ? "Save failed"
-                      : "Saved"}
+                          : "Saved"}
                   </span>
                 </div>
               </div>
@@ -562,8 +575,12 @@ export function WorkspacePage({ onNotify }: Props) {
               {hintStatus === "loading" ? "Generating hint..." : hintText}
             </p>
             <div className="button-row top-gap">
-              <button className="ghost" onClick={() => onNotify(hintText)}>
-                Send hint to toast
+              <button
+                className="ghost"
+                onClick={refreshHint}
+                disabled={hintStatus === "loading"}
+              >
+                Refresh hint
               </button>
               <button className="primary" onClick={() => setIsHintOpen(false)}>
                 Got it

@@ -31,6 +31,13 @@ ALLOWED_ORIGINS = [
     origin.strip() for origin in env_origins.split(",") if origin.strip()
 ] or DEFAULT_ALLOWED_ORIGINS
 
+# Optional comma-separated list of emails allowed to register/login. Empty means allow all.
+ALLOWED_EMAILS = {
+    email.strip().lower()
+    for email in os.environ.get("ALLOWED_EMAILS", "").split(",")
+    if email.strip()
+}
+
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 client = OpenAI()
 background_executor = ThreadPoolExecutor(max_workers=4)
@@ -38,9 +45,6 @@ background_executor = ThreadPoolExecutor(max_workers=4)
 DEFAULT_SAMPLE_CODE = """# Write Python here
 
 def main():
-    sample = [1, 2, 3]
-    doubled = [x * 2 for x in sample]
-    print("Doubled values:", doubled)
 
 if __name__ == "__main__":
     main()
@@ -339,6 +343,12 @@ def ensure_today_marked(user: User) -> dict:
     return activity
 
 
+def is_email_allowed(email: str) -> bool:
+    if not ALLOWED_EMAILS:
+        return True
+    return email.lower() in ALLOWED_EMAILS
+
+
 @app.route("/api/health", methods=["GET"])
 def healthcheck():
     return jsonify({"status": "ok"})
@@ -349,6 +359,12 @@ def register():
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
+
+    if not is_email_allowed(email):
+        return (
+            jsonify({"error": "Registration is not available for this account."}),
+            403,
+        )
 
     if not email or not password:
         return jsonify({"error": "Email and password are required."}), 400
@@ -369,6 +385,9 @@ def login():
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
+
+    if not is_email_allowed(email):
+        return jsonify({"error": "Login is not available for this account."}), 403
 
     user = User.query.filter_by(email=email).first()
     if not user or not check_password_hash(user.password_hash, password):
@@ -398,9 +417,12 @@ def change_password():
         return jsonify({"error": "Current password is incorrect."}), 400
 
     if check_password_hash(g.current_user.password_hash, new_password):
-        return jsonify(
-            {"error": "New password must be different from the current password."}
-        ), 400
+        return (
+            jsonify(
+                {"error": "New password must be different from the current password."}
+            ),
+            400,
+        )
 
     g.current_user.password_hash = generate_password_hash(new_password)
     g.current_user.updated_at = datetime.utcnow()
