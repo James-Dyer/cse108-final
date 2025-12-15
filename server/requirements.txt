@@ -7,5 +7,5 @@ PyJWT==2.10.1
 python-dotenv==1.0.1
 openai==2.11.0
 gunicorn==23.0.0
-psycopg2-binary==2.9.9
+psycopg[binary]==3.2.3
 flask-migrate==4.1.0

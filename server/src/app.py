@@ -49,9 +49,11 @@ if __name__ == "__main__":
 # Prefer DATABASE_URL (e.g., Render Postgres); fall back to local SQLite.
 db_url = os.environ.get("DATABASE_URL")
 if db_url:
-    # Render (and some clients) still emit postgres:// URLs; normalize for SQLAlchemy.
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+    # Normalize postgres schemes and use psycopg3 driver explicitly.
+    normalized = db_url.replace("postgres://", "postgresql://", 1)
+    if normalized.startswith("postgresql://"):
+        normalized = normalized.replace("postgresql://", "postgresql+psycopg://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = normalized
 else:
     db_path = os.path.join(os.path.dirname(__file__), "code_lab.db")
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"

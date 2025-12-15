@@ -25,7 +25,8 @@ OPENAI_MODEL=gpt-4o-mini          # optional, defaults shown
 JWT_SECRET=dev-secret-change-me   # optional
 ALLOWED_ORIGINS=http://localhost:5173
 JWT_TTL_MINUTES=1440
-# For production (Render) use a managed Postgres DB URL; leave unset locally to use SQLite:
+# For production (Render) use a managed Postgres DB URL; leave unset locally to use SQLite.
+# Psycopg 3 driver is used automatically:
 # DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB_NAME
 ```
 
