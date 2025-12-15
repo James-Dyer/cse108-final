@@ -15,6 +15,9 @@ downloads/
 eggs/
 .eggs/
 lib/
+# Keep frontend source helpers tracked despite the broad lib/ ignore
+!frontend/src/lib/
+!frontend/src/lib/**
 lib64/
 parts/
 sdist/
