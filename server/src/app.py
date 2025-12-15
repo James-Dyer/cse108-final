@@ -625,7 +625,17 @@ def generate_assignment_steps(raw_instructions: str) -> List[dict]:
         Steps should be ordered logically from start to finish.
         Do not include solution details or hints.
         Aim for three steps, max 5, min 2, depending on complexity of assignment.
-        Output valid JSON only. Use the key "description" (not "summary").
+
+        Output must be valid JSON in the following exact shape and nothing else:
+
+            {{
+                "steps": [
+                    {{
+                    "title": "Short name",
+                    "description": "One-sentence explanation",
+                    }}
+                ]
+            }}
 
         Assignment instructions:
         {raw_instructions}

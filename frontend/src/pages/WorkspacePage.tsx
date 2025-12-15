@@ -55,6 +55,13 @@ export function WorkspacePage({ onNotify }: Props) {
     return [...assignment.steps].sort((a, b) => a.order_index - b.order_index);
   }, [assignment]);
 
+  const overviewText =
+    (assignment?.overview || "").trim() ||
+    (assignment?.raw_instructions || "").trim();
+  const overviewClass = assignment?.overview?.trim()
+    ? "muted"
+    : "muted pre-wrap";
+
   useEffect(() => {
     if (!assignment) return;
     const initialCode = assignment.code ?? DEFAULT_CODE;
@@ -288,8 +295,8 @@ export function WorkspacePage({ onNotify }: Props) {
             </button>
           </div>
           <div className="window-body">
-            <p className="muted">
-              {assignment.raw_instructions ||
+            <p className={overviewClass}>
+              {overviewText ||
                 "Pick an assignment to view its prompt, steps, and hints."}
             </p>
             <h4>Plan</h4>
