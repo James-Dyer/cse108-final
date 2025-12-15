@@ -32,6 +32,13 @@ Run the API (defaults to `http://localhost:5001`):
 python src/app.py
 ```
 
+Run with Gunicorn for deployment (honors `server/gunicorn.conf.py`):
+```bash
+cd server
+gunicorn --config gunicorn.conf.py "src.app:app"
+```
+Environment overrides: `GUNICORN_BIND` (default `0.0.0.0:5001`), `GUNICORN_WORKERS` (default `2`), `GUNICORN_THREADS` (default `4`), `GUNICORN_TIMEOUT` (default `120`), `GUNICORN_LOGLEVEL` (default `info`).
+
 SQLite lives at `server/src/code_lab.db` and is created/updated automatically on start.
 
 ## Frontend setup (Vite)
