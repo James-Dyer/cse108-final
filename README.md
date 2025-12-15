@@ -25,6 +25,8 @@ OPENAI_MODEL=gpt-4o-mini          # optional, defaults shown
 JWT_SECRET=dev-secret-change-me   # optional
 ALLOWED_ORIGINS=http://localhost:5173
 JWT_TTL_MINUTES=1440
+# For production (Render) use a managed Postgres DB URL; leave unset locally to use SQLite:
+# DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB_NAME
 ```
 
 Run the API (defaults to `http://localhost:5001`):
@@ -38,6 +40,11 @@ cd server
 gunicorn --config gunicorn.conf.py "src.app:app"
 ```
 Environment overrides: `GUNICORN_BIND` (default `0.0.0.0:5001`), `GUNICORN_WORKERS` (default `2`), `GUNICORN_THREADS` (default `4`), `GUNICORN_TIMEOUT` (default `120`), `GUNICORN_LOGLEVEL` (default `info`).
+
+Render setup:
+- Add a Postgres service; Render will inject `DATABASE_URL`—no code changes needed because the app picks it up automatically.
+- Add your frontend origin to `ALLOWED_ORIGINS`.
+- Start command stays `gunicorn --config gunicorn.conf.py "src.app:app"`.
 
 SQLite lives at `server/src/code_lab.db` and is created/updated automatically on start.
 
