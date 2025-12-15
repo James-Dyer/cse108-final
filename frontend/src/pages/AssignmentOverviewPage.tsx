@@ -23,6 +23,11 @@ export function AssignmentOverviewPage({ onNotify }: Props) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const overviewText = assignment.overview?.trim() || "";
+  const fallbackText = assignment.raw_instructions?.trim() || "";
+  const displayText = overviewText || fallbackText;
+  const displayClass = overviewText ? "pre-wrap" : "pre-wrap muted";
+
   return (
     <section className="page-shell">
       <div className="breadcrumb">
@@ -46,15 +51,8 @@ export function AssignmentOverviewPage({ onNotify }: Props) {
           </div>
         </div>
         <div className="assignment-brief">
-          <p>
-            Given an array of integers nums and an integer target, return the indices of the two
-            numbers such that they add up to target. You may assume that each input would have
-            exactly one solution, and you may not use the same element twice. Return the answer in
-            any order.
-          </p>
-          <p className="muted">
-            Example: Input: nums = [2,7,11,15], target = 9. Output: [0,1]. Explanation:
-            Because nums[0] + nums[1] == 9.
+          <p className={displayClass}>
+            {displayText || "No overview available yet."}
           </p>
         </div>
         <div className="button-row top-gap">

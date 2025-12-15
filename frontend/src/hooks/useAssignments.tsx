@@ -32,6 +32,7 @@ type Assignment = {
   raw_instructions: string;
   language: string;
   code?: string;
+  overview?: string;
   max_stage_unlocked?: number;
   steps: Step[];
   learning_objectives?: LearningObjective[];

@@ -120,6 +120,7 @@ class Assignment(db.Model):
     raw_instructions = db.Column(db.Text, nullable=False)
     language = db.Column(db.String(64), default="python", nullable=False)
     code = db.Column(db.Text, default="", nullable=False)
+    overview = db.Column(db.Text, default="", nullable=False)
     max_stage_unlocked = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
@@ -149,6 +150,7 @@ class Assignment(db.Model):
             "raw_instructions": self.raw_instructions,
             "language": self.language,
             "code": self.code,
+            "overview": self.overview,
             "max_stage_unlocked": self.max_stage_unlocked,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
@@ -240,34 +242,6 @@ def build_step_plan(raw_instructions: str, language: str) -> List[dict]:
         {
             "title": "Self-check and refine",
             "description": "Walk through inputs, edge cases, and clean up naming/comments.",
-        },
-    ]
-
-
-def build_learning_objectives(raw_instructions: str) -> List[dict]:
-    """Deterministic fall-back objectives for when LLM is unavailable."""
-    headline = (raw_instructions.strip().split("\n")[0] or "This assignment")[:80]
-    return [
-        {
-            "title": "Clarify the goal",
-            "summary": f"Rewrite the brief in your own words. Key line: {headline}",
-            "why_it_matters": "Ensures you solve the intended problem and avoid rework.",
-            "used_in_this_assignment": "Sets the scope for your plan and tests.",
-            "order_index": 0,
-        },
-        {
-            "title": "Testing mindset",
-            "summary": "List a happy-path and edge-case test before coding.",
-            "why_it_matters": "Catches misunderstandings early.",
-            "used_in_this_assignment": "Guides how you validate each step.",
-            "order_index": 1,
-        },
-        {
-            "title": "Decompose the work",
-            "summary": "Break the problem into smaller functions or phases.",
-            "why_it_matters": "Keeps code modular and easier to debug.",
-            "used_in_this_assignment": "Informs your step plan and function boundaries.",
-            "order_index": 2,
         },
     ]
 
@@ -478,6 +452,11 @@ def create_assignment():
         max_stage_unlocked=max_stage_unlocked,
     )
 
+    try:
+        assignment.overview = generate_assignmnet_overview(instructions)
+    except Exception:
+        assignment.overview = ""
+
     for idx, step in enumerate(build_step_plan(instructions, assignment.language)):
         assignment.steps.append(
             Step(
@@ -487,7 +466,8 @@ def create_assignment():
             )
         )
 
-    for idx, objective in enumerate(build_learning_objectives(instructions)):
+    objectives = generate_assignment_learning_objectives(instructions)
+    for idx, objective in enumerate(objectives):
         assignment.objectives.append(
             LearningObjective(
                 title=objective.get("title", "")[:255],
@@ -529,25 +509,24 @@ def generate_assignmnet_overview(raw_instructions: str) -> str:
         - Maximum 200 words
         - No title or headers
         - Output only the assignment content
+        - use the word "monkey" somwhere in the overview
     """
     try:
         response = client.responses.create(
             model=OPENAI_MODEL,
             input=prompt,
             max_output_tokens=320,
-            temperature=0.2,
         )
         text = (response.output_text or "").strip()
-        if not text:
-            raise RuntimeError("LLM returned empty output.")
-        return text
-
+        app.logger.info("LLM overview output: %s", text)
+        if text:
+            return text
     except Exception as exc:
         app.logger.error("LLM overview generation failed", exc_info=exc)
         raise RuntimeError("Assignment overview generation failed.") from exc
 
 
-def generate_assignment_learning_objectives(raw_instructions: str) -> str:
+def generate_assignment_learning_objectives(raw_instructions: str) -> List[dict]:
     prompt = f"""
         Given instructions for an assignment, generate a deterministic JSON object containing a list of Learning Objectives.
         Each learning objective represents a core skill or idea the student will practice while completing the assignment.
@@ -563,23 +542,83 @@ def generate_assignment_learning_objectives(raw_instructions: str) -> str:
 
         Rules:
         - Do not include implementation steps, code, or instructions.
-        - Output must be valid JSON and nothing else.
+        - Output must be valid JSON in the following exact shape and nothing else:
+
+            {{
+                "learning_objectives": [
+                    {{
+                    "title": "Short human-readable name",
+                    "summary": "One-sentence explanation of the concept",
+                    "why_it_matters": "One-sentence explanation of its general importance",
+                    "used_in_this_assignment": "One-sentence description of where it appears in this assignment"
+                    }}
+                ]
+            }}
     """
     try:
         response = client.responses.create(
             model=OPENAI_MODEL,
             input=prompt,
             max_output_tokens=480,
-            temperature=0.25,
         )
+
         text = (response.output_text or "").strip()
+        app.logger.info("LLM learning objectives output: %s", text)
         if not text:
-            raise RuntimeError("LLM returned empty output.")
-        return text
+            raise ValueError("LLM returned empty output.")
+
+        # Some LLM responses are wrapped in Markdown fences; strip them before parsing JSON.
+        if text.startswith("```"):
+            text = text.lstrip("`")
+            # Drop possible language hint like json\n
+            newline_idx = text.find("\n")
+            if newline_idx != -1:
+                text = text[newline_idx + 1 :]
+            # Remove trailing fence if present
+            if text.rstrip().endswith("```"):
+                text = text.rstrip("`").rstrip()
+
+        parsed = json.loads(text)
+
+        objectives = parsed.get("learning_objectives")
+        if not isinstance(objectives, list) or not objectives:
+            raise ValueError("No learning_objectives list found in LLM output.")
+
+        cleaned = []
+        for idx, obj in enumerate(objectives):
+            if not isinstance(obj, dict):
+                raise ValueError(f"Objective at index {idx} is not an object.")
+
+            required_fields = [
+                "title",
+                "summary",
+                "why_it_matters",
+                "used_in_this_assignment",
+            ]
+            for field in required_fields:
+                if not obj.get(field) or not isinstance(obj[field], str):
+                    raise ValueError(
+                        f"Objective {idx} missing or invalid field: {field}"
+                    )
+
+            cleaned.append(
+                {
+                    "title": obj["title"].strip()[:255],
+                    "summary": obj["summary"].strip(),
+                    "why_it_matters": obj["why_it_matters"].strip(),
+                    "used_in_this_assignment": obj["used_in_this_assignment"].strip(),
+                    "order_index": idx,
+                }
+            )
+
+        return cleaned
 
     except Exception as exc:
-        app.logger.error("LLM learning objective generation failed", exc_info=exc)
-        raise RuntimeError("Learning objective generation failed.") from exc
+        app.logger.error(
+            "LLM learning objective generation failed",
+            exc_info=exc,
+        )
+        raise
 
 
 @app.route("/api/assignments/<int:assignment_id>", methods=["GET"])
@@ -713,8 +752,10 @@ def replace_objectives(assignment_id: int):
 
     assignment.objectives.clear()
 
-    source_objectives = validated_objectives or build_learning_objectives(
-        assignment.raw_instructions
+    source_objectives = (
+        validated_objectives
+        if validated_objectives
+        else generate_assignment_learning_objectives(assignment.raw_instructions)
     )
     for idx, objective in enumerate(source_objectives):
         assignment.objectives.append(
@@ -803,6 +844,14 @@ def ensure_assignment_schema():
                 text(
                     "UPDATE assignments SET max_stage_unlocked = 0 WHERE max_stage_unlocked IS NULL"
                 )
+            )
+    if "overview" not in columns:
+        with db.engine.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE assignments ADD COLUMN overview TEXT DEFAULT ''")
+            )
+            conn.execute(
+                text("UPDATE assignments SET overview = '' WHERE overview IS NULL")
             )
 
 

@@ -34,6 +34,10 @@
   line-height: 1.5;
 }
 
+.pre-wrap {
+  white-space: pre-wrap;
+}
+
 .steps {
   list-style: none;
   padding: 0;
