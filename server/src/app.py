@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import json
+import logging
 from functools import wraps
 import os
 from typing import List, Optional
@@ -18,6 +19,7 @@ from openai import OpenAI
 load_dotenv()
 
 app = Flask(__name__)
+logging.getLogger("werkzeug").setLevel(logging.WARNING)
 DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5173/",
@@ -466,9 +468,10 @@ def create_assignment():
     db.session.add(assignment)
     db.session.commit()
 
-    # Kick off LLM calls in the background so overview and objectives can land independently.
+    # Kick off LLM calls in the background so overview, objectives, and steps can land independently.
     background_executor.submit(populate_overview_async, assignment.id, instructions)
     background_executor.submit(populate_objectives_async, assignment.id, instructions)
+    background_executor.submit(populate_steps_async, assignment.id, instructions)
 
     return jsonify({"assignment": serialize_assignment(assignment)}), 201
 
@@ -531,7 +534,7 @@ def generate_assignment_learning_objectives(raw_instructions: str) -> List[dict]
 
         Rules:
         - Do not include implementation steps, code, or instructions.
-        - Generate at most three learning objectives, unless the assignment is simple enough where it only has one or two clear objectives, then generate 1 or 2. 
+        - Generate at most three learning objectives, but generating 1 or 2 is preferred if the assignment and it's objective is simple.
         - Output must be valid JSON in the following exact shape and nothing else:
 
             {{
@@ -611,6 +614,72 @@ def generate_assignment_learning_objectives(raw_instructions: str) -> List[dict]
         raise
 
 
+def generate_assignment_steps(raw_instructions: str) -> List[dict]:
+    prompt = f"""
+        Given instructions for an assignment, generate a deterministic JSON object representing an ordered list of steps for completing the assignment.
+
+        For each step, include:
+        - title: a short, action-oriented name
+        - description: a one-sentence explanation of what the step accomplishes, without implementation details, code, or language-specific guidance.
+
+        Steps should be ordered logically from start to finish.
+        Do not include solution details or hints.
+        Aim for three steps, max 5, min 2, depending on complexity of assignment.
+        Output valid JSON only. Use the key "description" (not "summary").
+
+        Assignment instructions:
+        {raw_instructions}
+    """
+    try:
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=prompt,
+            max_output_tokens=480,
+        )
+        text = (response.output_text or "").strip()
+        app.logger.info("LLM step plan output: %s", text)
+        if not text:
+            raise ValueError("LLM returned empty output for steps.")
+
+        if text.startswith("```"):
+            text = text.lstrip("`")
+            newline_idx = text.find("\n")
+            if newline_idx != -1:
+                text = text[newline_idx + 1 :]
+            if text.rstrip().endswith("```"):
+                text = text.rstrip("`").rstrip()
+
+        parsed = json.loads(text)
+        steps = parsed.get("steps")
+        if not isinstance(steps, list) or not steps:
+            raise ValueError("No steps array found in LLM output.")
+
+        cleaned = []
+        for idx, step in enumerate(steps):
+            if not isinstance(step, dict):
+                raise ValueError(f"Step at index {idx} is not an object.")
+
+            title = (step.get("title") or "").strip()
+            description = (step.get("description") or step.get("summary") or "").strip()
+            if not title:
+                raise ValueError(f"Step {idx + 1} missing title.")
+            if not description:
+                raise ValueError(f"Step {idx + 1} missing description/summary.")
+
+            cleaned.append(
+                {
+                    "title": title[:255],
+                    "description": description,
+                    "order_index": idx,
+                }
+            )
+
+        return cleaned
+    except Exception as exc:
+        app.logger.error("LLM step plan generation failed", exc_info=exc)
+        raise
+
+
 def populate_overview_async(assignment_id: int, instructions: str) -> None:
     """Populate overview in a background thread without blocking the request."""
     with app.app_context():
@@ -653,6 +722,32 @@ def populate_objectives_async(assignment_id: int, instructions: str) -> None:
                         "used_in_this_assignment", ""
                     ),
                     order_index=objective.get("order_index", idx),
+                )
+            )
+        db.session.commit()
+        db.session.remove()
+
+
+def populate_steps_async(assignment_id: int, instructions: str) -> None:
+    """Populate step plan in a background thread without blocking the request."""
+    with app.app_context():
+        assignment = Assignment.query.filter_by(id=assignment_id).first()
+        if not assignment:
+            return
+        try:
+            steps = generate_assignment_steps(instructions)
+        except Exception:
+            app.logger.error("Async step generation failed", exc_info=True)
+            db.session.remove()
+            return
+
+        assignment.steps.clear()
+        for idx, step in enumerate(steps):
+            assignment.steps.append(
+                Step(
+                    title=step.get("title", "")[:255],
+                    description=step.get("description", ""),
+                    order_index=step.get("order_index", idx),
                 )
             )
         db.session.commit()

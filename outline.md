@@ -138,8 +138,10 @@ Schema:
 
 **Step plan**
 Input: The instructions combined with the extracted learning objectives
-Output: An ordered list of steps. Needs a deterministic "Title:" and a generated short label for the step: (e.x. “Design the data structures”)
-Triggered: After learning objective extraction
+Output: An ordered list of steps in JSON format. Each step needs a Title and Description. 
+(e.x. Title: "Read User Input”, Description: "Obtain a single line of input containing space-separated numbers from the user.")
+Like the learning objectives, this should be generated in a determinstic json format, with multiple steps, aim for three, max 5, min 2, depending on complexity of assignment. 
+
 
 **Hint generation**
 Input: The current step, the learner’s current code, and their history
