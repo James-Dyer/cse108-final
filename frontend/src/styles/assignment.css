@@ -44,6 +44,10 @@
   margin: 0;
 }
 
+.assignment-progress .RSPBprogressBar .RSPBprogression {
+  transition: width 0.4s ease;
+}
+
 .steps.flowchart {
   display: flex;
   align-items: center;

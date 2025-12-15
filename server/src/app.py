@@ -764,6 +764,47 @@ def populate_steps_async(assignment_id: int, instructions: str) -> None:
         db.session.remove()
 
 
+def generate_assignment_hint(
+    raw_instructions: str, step: Optional[Step], code: str
+) -> str:
+    step_title = step.title if step else "Current task"
+    step_description = step.description if step else ""
+    prompt = f"""
+        Act as a concise coding coach.
+        Generate a single actionable hint for the learner based on the current step, their code, and the assignment context.
+
+        Rules for the hint:
+        - One or two sentences max.
+        - Focus on what to check or adjust, not on providing the solution.
+        - Do not write code.
+        - Avoid restating the entire instructions.
+
+        Assignment instructions:
+        {raw_instructions}
+
+        Current step:
+        Title: {step_title}
+        Description: {step_description}
+
+        Learner code:
+        {code}
+    """
+    try:
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=prompt,
+            max_output_tokens=180,
+        )
+        text = (response.output_text or "").strip()
+        app.logger.info("LLM hint output: %s", text)
+        if not text:
+            raise ValueError("LLM returned empty output for hint.")
+        return text
+    except Exception as exc:
+        app.logger.error("LLM hint generation failed", exc_info=exc)
+        raise
+
+
 @app.route("/api/assignments/<int:assignment_id>", methods=["GET"])
 @require_auth
 def retrieve_assignment(assignment_id: int):
@@ -962,6 +1003,32 @@ def update_assignment_progress(assignment_id: int):
     )
     db.session.commit()
     return jsonify({"assignment": serialize_assignment(assignment)})
+
+
+@app.route("/api/assignments/<int:assignment_id>/hint", methods=["POST"])
+@require_auth
+def generate_hint(assignment_id: int):
+    assignment = get_assignment_or_404(assignment_id)
+    if not assignment or assignment.user_id != g.current_user.id:
+        return jsonify({"error": "Assignment not found."}), 404
+
+    data = request.get_json() or {}
+    code = (data.get("code") or assignment.code or "").strip()
+    step_index = data.get("step_index")
+    try:
+        step_index = int(step_index) if step_index is not None else None
+    except (TypeError, ValueError):
+        step_index = None
+
+    ordered_steps = sorted(assignment.steps, key=lambda s: s.order_index)
+    step = None
+    if isinstance(step_index, int) and 0 <= step_index < len(ordered_steps):
+        step = ordered_steps[step_index]
+    elif ordered_steps:
+        step = ordered_steps[0]
+
+    hint = generate_assignment_hint(assignment.raw_instructions, step, code)
+    return jsonify({"hint": hint})
 
 
 def ensure_assignment_schema():

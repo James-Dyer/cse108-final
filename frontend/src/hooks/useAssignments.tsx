@@ -56,10 +56,12 @@ const AssignmentsContext = createContext<AssignmentsContextValue | undefined>(
 export function AssignmentsProvider({ children }: { children: ReactNode }) {
   const { token, loading: authLoading } = useAuth();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
-    if (!token || authLoading) return;
+    if (!token || authLoading) {
+      return;
+    }
     setLoading(true);
     try {
       const data = await apiFetch<{ assignments: Assignment[] }>(
@@ -73,9 +75,13 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
     if (!token) {
       setAssignments([]);
+      setLoading(false);
       return;
     }
     refresh();

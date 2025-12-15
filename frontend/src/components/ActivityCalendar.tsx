@@ -1,4 +1,4 @@
-import type { CSSProperties, SVGProps } from "react";
+import React, { type CSSProperties } from "react";
 import CalendarHeatmap from "react-calendar-heatmap";
 import type { ActivityMap } from "../hooks/useActivity";
 
@@ -158,18 +158,24 @@ export function ActivityCalendar({
           const nextActive = !activity[value.date];
           onToggleDay(value.date, nextActive);
         }}
-        transformDayElement={(elementProps: SVGProps<SVGRectElement>) => {
+        transformDayElement={(element) => {
           // Adjust the internal 10px square to match our theme size and gutter.
-          const x = Number(elementProps.x ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
-          const y = Number(elementProps.y ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
-          return (
-            <rect
-              {...elementProps}
-              width={squareSize}
-              height={squareSize}
-              x={x}
-              y={y}
-            />
+          const props = (element as React.ReactElement).props || {};
+          const key = (element as React.ReactElement).key;
+          const x = Number(props.x ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+          const y = Number(props.y ?? 0) + (LIBRARY_SQUARE_SIZE - squareSize) / 2;
+          const { x: _x, y: _y, width: _w, height: _h, ...rest } = props;
+          return React.cloneElement(
+            element as React.ReactElement,
+            {
+              ...rest,
+              key: key ?? undefined,
+              width: squareSize,
+              height: squareSize,
+              x,
+              y,
+            },
+            null
           );
         }}
       />

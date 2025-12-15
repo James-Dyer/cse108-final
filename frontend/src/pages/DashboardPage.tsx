@@ -50,7 +50,7 @@ export function DashboardPage({ onNotify }: Props) {
         <div>
           <h1>Dashboard</h1>
           <p className="lede">
-            Draft assignments, see progress, and jump into a guided workspace. Plans stay deterministic and ready for analysis.
+            Draft assignments, plan ahead, and jump into a guided workspace.
           </p>
         </div>
       </section>

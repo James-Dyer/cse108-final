@@ -96,7 +96,7 @@ export function LearningObjectivesPage({ onNotify }: Props) {
           <div>
             <h2>Learning objectives for this assignment</h2>
             <p className="muted">
-              Derived deterministically from your instructions so you can prep before coding.
+              Review these topics before diving into the Code workspace.
             </p>
           </div>
           <span className="chip subtle">{objectives.length} objectives</span>
@@ -124,7 +124,7 @@ export function LearningObjectivesPage({ onNotify }: Props) {
                 )}
                 {objective.used_in_this_assignment && (
                   <p className="muted small">
-                    <strong>Use it here:</strong> {objective.used_in_this_assignment}
+                    <strong>In your assignment:</strong> {objective.used_in_this_assignment}
                   </p>
                 )}
               </article>

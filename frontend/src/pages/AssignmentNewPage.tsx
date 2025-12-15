@@ -22,7 +22,8 @@ export function AssignmentNewPage({ onNotify }: Props) {
       setTitle("");
       setRawInstructions("");
       onNotify("Assignment drafted with a starter step plan.");
-      navigate(`/assignments/${assignment.id}`);
+      const url = `/assignments/${assignment.id}`;
+      navigate(url);
     } catch (error: any) {
       onNotify(error.message || "Could not create assignment.");
     }
@@ -70,7 +71,32 @@ export function AssignmentNewPage({ onNotify }: Props) {
               Cancel
             </button>
             <button type="submit" className="primary">
-              Build plan
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <span>Start Assignment</span>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M10.5 4.5H15.5V9.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9.5 10.5 15.5 4.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9 4.5H6.5A2 2 0 0 0 4.5 6.5V13.5A2 2 0 0 0 6.5 15.5H13.5A2 2 0 0 0 15.5 13.5V11"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
             </button>
           </div>
         </form>

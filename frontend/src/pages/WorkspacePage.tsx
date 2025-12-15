@@ -6,6 +6,8 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { useAssignments } from "../hooks/useAssignments";
 import { StepsList } from "../components/StepsList";
 import { AssignmentProgressNav } from "../components/AssignmentProgressNav";
+import { useAuth } from "../hooks/useAuth";
+import { apiFetch } from "../lib/api";
 
 type Props = {
   onNotify: (msg: string) => void;
@@ -24,7 +26,8 @@ if __name__ == "__main__":
 
 export function WorkspacePage({ onNotify }: Props) {
   const { assignmentId } = useParams();
-  const { getById, updateCode } = useAssignments();
+  const { getById, updateCode, loading: assignmentsLoading } = useAssignments();
+  const { token } = useAuth();
   const [pyodideStatus, setPyodideStatus] = useState<
     "idle" | "loading" | "ready" | "error"
   >("idle");
@@ -42,6 +45,8 @@ export function WorkspacePage({ onNotify }: Props) {
   const [consoleText, setConsoleText] = useState("Runtime warming up...");
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const codeStackRef = useRef<HTMLDivElement | null>(null);
+  const [hintText, setHintText] = useState("Generating hint...");
+  const [hintStatus, setHintStatus] = useState<"idle" | "loading" | "error">("idle");
 
   const assignment = useMemo(() => {
     if (!assignmentId) return null;
@@ -133,14 +138,33 @@ export function WorkspacePage({ onNotify }: Props) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [isHintOpen]);
-
-  const generateHint = () => {
-    if (!assignment) return "Pick or create an assignment to get hints.";
-    if (orderedSteps.length === 0) return "Add steps to start receiving targeted hints.";
-    return `Focus on: ${orderedSteps[0].title}. Keep code aligned with the brief: “${assignment.raw_instructions.slice(0, 140)}...”`;
-  };
-
-  const hintText = useMemo(() => generateHint(), [assignment, orderedSteps]);
+  useEffect(() => {
+    if (!isHintOpen || !assignment || !token) return;
+    const fetchHint = async () => {
+      setHintStatus("loading");
+      setHintText("Generating hint...");
+      try {
+        const payload: any = { code };
+        if (orderedSteps.length > 0) {
+          payload.step_index = 0;
+        }
+        const resp = await apiFetch<{ hint: string }>(
+          `/api/assignments/${assignment.id}/hint`,
+          token,
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          }
+        );
+        setHintText(resp.hint || "No hint available yet.");
+        setHintStatus("idle");
+      } catch (error: any) {
+        setHintStatus("error");
+        setHintText(error.message || "Could not generate hint.");
+      }
+    };
+    fetchHint();
+  }, [assignment, code, isHintOpen, orderedSteps.length, token]);
 
   const runCode = async () => {
     if (!pyodide || pyodideStatus !== "ready") {
@@ -179,6 +203,23 @@ export function WorkspacePage({ onNotify }: Props) {
 
   const resetRuntime = () => {
     setConsoleText("Cleared console. Runtime still loaded.");
+  };
+
+  const downloadCode = () => {
+    if (!assignment) return;
+    const blob = new Blob([code], { type: "text/x-python" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeTitle = assignment.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    link.href = url;
+    link.download = `${safeTitle || "assignment"}.py`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
@@ -228,6 +269,16 @@ export function WorkspacePage({ onNotify }: Props) {
     window.addEventListener("resize", setSize);
     return () => window.removeEventListener("resize", setSize);
   }, []);
+
+  if (!assignment && assignmentsLoading) {
+    return (
+      <section className="page-shell workspace-shell">
+        <div className="panel muted" style={{ marginTop: 20 }}>
+          Loading assignment...
+        </div>
+      </section>
+    );
+  }
 
   if (!assignment) {
     onNotify("Assignment not found.");
@@ -379,11 +430,34 @@ export function WorkspacePage({ onNotify }: Props) {
                         ? "Saving..."
                         : saveStatus === "error"
                           ? "Save failed"
-                          : "Saved"}
+                      : "Saved"}
                   </span>
                 </div>
               </div>
               <div className="button-row">
+                <button
+                  className="ghost icon-button"
+                  onClick={downloadCode}
+                  aria-label="Download code as .py"
+                  title="Download code as .py"
+                >
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M10 3v9m0 0 3-3m-3 3-3-3"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M5 14.5h10v2a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-2Z"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
                 <button className="ghost" onClick={resetRuntime}>
                   Reset console
                 </button>
@@ -484,7 +558,9 @@ export function WorkspacePage({ onNotify }: Props) {
                 Close
               </button>
             </div>
-            <p className="muted">{hintText}</p>
+            <p className="muted">
+              {hintStatus === "loading" ? "Generating hint..." : hintText}
+            </p>
             <div className="button-row top-gap">
               <button className="ghost" onClick={() => onNotify(hintText)}>
                 Send hint to toast

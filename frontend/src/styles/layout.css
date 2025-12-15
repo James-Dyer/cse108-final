@@ -206,6 +206,26 @@ textarea {
   color: #ffb3b3;
 }
 
+.icon-button {
+  border: none !important;
+  background: transparent !important;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.icon-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
 .button-row {
   display: flex;
   gap: 8px;

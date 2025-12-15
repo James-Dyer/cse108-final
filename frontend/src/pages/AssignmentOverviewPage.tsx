@@ -91,11 +91,9 @@ export function AssignmentOverviewPage({ onNotify }: Props) {
             <p className="muted">{assignment.title}</p>
           </div>
         </div>
-        <div className="assignment-brief">
-          <p className={displayClass}>
-            {displayText || "No overview available yet."}
-          </p>
-        </div>
+        <p className={displayClass} style={{ marginTop: 12 }}>
+          {displayText || "No overview available yet."}
+        </p>
         <div className="button-row top-gap">
           <Link className="primary" to={`/assignments/${assignment.id}/learning-objectives`}>
             View learning objectives

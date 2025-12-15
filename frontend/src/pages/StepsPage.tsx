@@ -10,7 +10,7 @@ type Props = {
 
 export function StepsPage({ onNotify }: Props) {
   const { assignmentId } = useParams();
-  const { getById } = useAssignments();
+  const { getById, loading: assignmentsLoading } = useAssignments();
 
   const assignment = useMemo(() => {
     if (!assignmentId) return null;
@@ -23,6 +23,16 @@ export function StepsPage({ onNotify }: Props) {
     if (!assignment) return [];
     return [...assignment.steps].sort((a, b) => a.order_index - b.order_index);
   }, [assignment]);
+
+  if (!assignment && assignmentsLoading) {
+    return (
+      <section className="page-shell">
+        <div className="panel muted" style={{ marginTop: 20 }}>
+          Loading assignment...
+        </div>
+      </section>
+    );
+  }
 
   if (!assignment) {
     onNotify("Assignment not found.");
@@ -47,7 +57,7 @@ export function StepsPage({ onNotify }: Props) {
       <div className="panel">
         <div className="panel-header">
           <div>
-            <h2>Step-by-step flow</h2>
+            <h2>Plan Outline</h2>
             <p className="muted">{assignment.title}</p>
           </div>
           <span className="chip subtle">{orderedSteps.length} steps</span>
