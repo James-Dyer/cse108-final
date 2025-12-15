@@ -3,6 +3,7 @@ import json
 from functools import wraps
 import os
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
 from flask import Flask, g, jsonify, request
@@ -30,6 +31,7 @@ ALLOWED_ORIGINS = [
 
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 client = OpenAI()
+background_executor = ThreadPoolExecutor(max_workers=4)
 
 DEFAULT_SAMPLE_CODE = """# Write Python here
 
@@ -452,11 +454,6 @@ def create_assignment():
         max_stage_unlocked=max_stage_unlocked,
     )
 
-    try:
-        assignment.overview = generate_assignmnet_overview(instructions)
-    except Exception:
-        assignment.overview = ""
-
     for idx, step in enumerate(build_step_plan(instructions, assignment.language)):
         assignment.steps.append(
             Step(
@@ -466,20 +463,12 @@ def create_assignment():
             )
         )
 
-    objectives = generate_assignment_learning_objectives(instructions)
-    for idx, objective in enumerate(objectives):
-        assignment.objectives.append(
-            LearningObjective(
-                title=objective.get("title", "")[:255],
-                summary=objective.get("summary", ""),
-                why_it_matters=objective.get("why_it_matters", ""),
-                used_in_this_assignment=objective.get("used_in_this_assignment", ""),
-                order_index=objective.get("order_index", idx),
-            )
-        )
-
     db.session.add(assignment)
     db.session.commit()
+
+    # Kick off LLM calls in the background so overview and objectives can land independently.
+    background_executor.submit(populate_overview_async, assignment.id, instructions)
+    background_executor.submit(populate_objectives_async, assignment.id, instructions)
 
     return jsonify({"assignment": serialize_assignment(assignment)}), 201
 
@@ -542,6 +531,7 @@ def generate_assignment_learning_objectives(raw_instructions: str) -> List[dict]
 
         Rules:
         - Do not include implementation steps, code, or instructions.
+        - Generate at most three learning objectives, unless the assignment is simple enough where it only has one or two clear objectives, then generate 1 or 2. 
         - Output must be valid JSON in the following exact shape and nothing else:
 
             {{
@@ -619,6 +609,54 @@ def generate_assignment_learning_objectives(raw_instructions: str) -> List[dict]
             exc_info=exc,
         )
         raise
+
+
+def populate_overview_async(assignment_id: int, instructions: str) -> None:
+    """Populate overview in a background thread without blocking the request."""
+    with app.app_context():
+        assignment = Assignment.query.filter_by(id=assignment_id).first()
+        if not assignment:
+            return
+        try:
+            overview = generate_assignmnet_overview(instructions)
+        except Exception:
+            overview = ""
+
+        assignment.overview = overview
+        db.session.commit()
+        db.session.remove()
+
+
+def populate_objectives_async(assignment_id: int, instructions: str) -> None:
+    """Populate learning objectives in a background thread without blocking the request."""
+    with app.app_context():
+        assignment = Assignment.query.filter_by(id=assignment_id).first()
+        if not assignment:
+            return
+        try:
+            objectives = generate_assignment_learning_objectives(instructions)
+        except Exception:
+            app.logger.error(
+                "Async learning objective generation failed", exc_info=True
+            )
+            db.session.remove()
+            return
+
+        assignment.objectives.clear()
+        for idx, objective in enumerate(objectives):
+            assignment.objectives.append(
+                LearningObjective(
+                    title=objective.get("title", "")[:255],
+                    summary=objective.get("summary", ""),
+                    why_it_matters=objective.get("why_it_matters", ""),
+                    used_in_this_assignment=objective.get(
+                        "used_in_this_assignment", ""
+                    ),
+                    order_index=objective.get("order_index", idx),
+                )
+            )
+        db.session.commit()
+        db.session.remove()
 
 
 @app.route("/api/assignments/<int:assignment_id>", methods=["GET"])

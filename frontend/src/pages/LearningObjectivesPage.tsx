@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useAssignments, type LearningObjective } from "../hooks/useAssignments";
 import { AssignmentProgressNav } from "../components/AssignmentProgressNav";
 
@@ -9,14 +9,11 @@ type Props = {
 
 export function LearningObjectivesPage({ onNotify }: Props) {
   const { assignmentId } = useParams();
-  const { getById } = useAssignments();
+  const { getById, loading: assignmentsLoading, refresh } = useAssignments();
 
-  const assignment = useMemo(() => {
-    if (!assignmentId) return null;
-    const numeric = Number(assignmentId);
-    if (Number.isNaN(numeric)) return null;
-    return getById(numeric);
-  }, [assignmentId, getById]);
+  const numericId = assignmentId ? Number(assignmentId) : NaN;
+  const assignment =
+    assignmentId && !Number.isNaN(numericId) ? getById(numericId) : null;
 
   const objectives = useMemo(() => {
     const storedObjectives = assignment?.learning_objectives || [];
@@ -25,10 +22,59 @@ export function LearningObjectivesPage({ onNotify }: Props) {
     );
   }, [assignment]);
 
+  if (!assignment && assignmentsLoading) {
+    return (
+      <section className="page-shell">
+        <div className="panel muted" style={{ marginTop: 20 }}>
+          Loading assignment...
+        </div>
+      </section>
+    );
+  }
+
   if (!assignment) {
     onNotify("Assignment not found.");
     return <Navigate to="/dashboard" replace />;
   }
+
+  useEffect(() => {
+    if (!assignmentId || Number.isNaN(numericId)) return;
+    if (objectives.length > 0) return;
+    if (!assignment?.raw_instructions?.trim()) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    let timer: number | undefined;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        await refresh();
+      } catch {
+        // ignore errors; UI shows placeholder
+      }
+      if (cancelled) return;
+      const updated = getById(numericId);
+      if (
+        (!updated?.learning_objectives ||
+          updated.learning_objectives.length === 0) && attempts < 10
+      ) {
+        timer = window.setTimeout(poll, 2000);
+      }
+    };
+
+    poll();
+
+    return () => {
+      cancelled = true;
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [assignment?.raw_instructions, assignmentId, getById, numericId, objectives.length, refresh]);
+
+  const isGeneratingObjectives =
+    objectives.length === 0 && Boolean(assignment.raw_instructions?.trim());
 
   return (
     <section className="page-shell">
@@ -55,7 +101,11 @@ export function LearningObjectivesPage({ onNotify }: Props) {
           </div>
           <span className="chip subtle">{objectives.length} objectives</span>
         </div>
-        {objectives.length === 0 ? (
+        {isGeneratingObjectives ? (
+          <div className="instruction-box">
+            <p className="muted">Generating... Waiting on OpenAI for the learning objectives.</p>
+          </div>
+        ) : objectives.length === 0 ? (
           <div className="instruction-box">
             <p className="muted">
               No learning objectives are available for this assignment yet. Please regenerate or try again later.

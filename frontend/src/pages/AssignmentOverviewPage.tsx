@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect } from "react";
 import { useAssignments } from "../hooks/useAssignments";
 import { AssignmentProgressNav } from "../components/AssignmentProgressNav";
 
@@ -9,23 +9,64 @@ type Props = {
 
 export function AssignmentOverviewPage({ onNotify }: Props) {
   const { assignmentId } = useParams();
-  const { getById } = useAssignments();
+  const { getById, loading: assignmentsLoading, refresh } = useAssignments();
 
-  const assignment = useMemo(() => {
-    if (!assignmentId) return null;
-    const numeric = Number(assignmentId);
-    if (Number.isNaN(numeric)) return null;
-    return getById(numeric);
-  }, [assignmentId, getById]);
+  const numericId = assignmentId ? Number(assignmentId) : NaN;
+  const assignment =
+    assignmentId && !Number.isNaN(numericId) ? getById(numericId) : null;
+
+  if (!assignment && assignmentsLoading) {
+    return (
+      <section className="page-shell">
+        <div className="panel muted" style={{ marginTop: 20 }}>
+          Loading assignment...
+        </div>
+      </section>
+    );
+  }
 
   if (!assignment) {
     onNotify("Assignment not found.");
     return <Navigate to="/dashboard" replace />;
   }
 
+  useEffect(() => {
+    if (!assignmentId || Number.isNaN(numericId) || assignment?.overview?.trim()) {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    let timer: number | undefined;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        await refresh();
+      } catch {
+        // swallow errors; UI already shows fallback state
+      }
+      if (cancelled) return;
+      const updated = getById(numericId);
+      if (!updated?.overview?.trim() && attempts < 10) {
+        timer = window.setTimeout(poll, 2000);
+      }
+    };
+
+    poll();
+
+    return () => {
+      cancelled = true;
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [assignment?.overview, assignmentId, getById, numericId, refresh]);
+
   const overviewText = assignment.overview?.trim() || "";
   const fallbackText = assignment.raw_instructions?.trim() || "";
-  const displayText = overviewText || fallbackText;
+  const isGenerating = !overviewText && Boolean(fallbackText);
+  const displayText = isGenerating ? "Generating..." : overviewText || fallbackText;
   const displayClass = overviewText ? "pre-wrap" : "pre-wrap muted";
 
   return (
