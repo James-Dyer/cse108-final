@@ -19,6 +19,7 @@ type AuthContextValue = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -115,11 +116,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persistSession(data.user, data.token);
   };
 
+  const changePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ) => {
+    if (!token) {
+      throw new Error("unauthorized");
+    }
+    const data = await apiFetch<{ user?: User; token?: string }>(
+      "/api/auth/password",
+      token,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      }
+    );
+    // Refresh the session if the server issued a fresh token.
+    if (data.user && data.token) {
+      persistSession(data.user, data.token);
+    }
+  };
+
   const logout = clearSession;
 
   const value = useMemo(
-    () => ({ user, token, loading, login, register, logout }),
-    [user, token, loading]
+    () => ({ user, token, loading, login, register, changePassword, logout }),
+    [user, token, loading, login, register, changePassword, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

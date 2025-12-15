@@ -375,6 +375,38 @@ def current_user():
     return jsonify({"user": g.current_user.to_dict()})
 
 
+@app.route("/api/auth/password", methods=["POST"])
+@require_auth
+def change_password():
+    data = request.get_json() or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+
+    if not current_password or not new_password:
+        return jsonify({"error": "Current and new passwords are required."}), 400
+
+    if not check_password_hash(g.current_user.password_hash, current_password):
+        return jsonify({"error": "Current password is incorrect."}), 400
+
+    if check_password_hash(g.current_user.password_hash, new_password):
+        return jsonify(
+            {"error": "New password must be different from the current password."}
+        ), 400
+
+    g.current_user.password_hash = generate_password_hash(new_password)
+    g.current_user.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    token = generate_token(g.current_user)
+    return jsonify(
+        {
+            "message": "Password updated.",
+            "user": g.current_user.to_dict(),
+            "token": token,
+        }
+    )
+
+
 @app.route("/api/activity", methods=["GET"])
 @require_auth
 def get_activity():

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAssignments } from "../hooks/useAssignments";
 import { useActivity } from "../hooks/useActivity";
@@ -12,8 +12,14 @@ type Props = {
 
 export function DashboardPage({ onNotify }: Props) {
   const { assignments, remove } = useAssignments();
-  const { activity } = useActivity();
-  const { user, logout } = useAuth();
+  const { activity, setDayActive, loading: activityLoading } = useActivity();
+  const { user, logout, changePassword } = useAuth();
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   const handleDelete = async (id: number) => {
     try {
@@ -40,9 +46,56 @@ export function DashboardPage({ onNotify }: Props) {
     onNotify("Logged out.");
   };
 
-  const handleChangePassword = () => {
-    onNotify("Password change is coming soon. For now, use your provider or contact support.");
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
   };
+
+  const handleChangePassword = () => {
+    setChangingPassword((prev) => !prev);
+    setPasswordError("");
+    if (changingPassword) {
+      resetPasswordForm();
+    }
+  };
+
+  const handleSubmitPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setPasswordError("");
+
+    if (!currentPassword || !newPassword) {
+      setPasswordError("Enter your current password and a new one.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password entries must match.");
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      resetPasswordForm();
+      setChangingPassword(false);
+      onNotify("Password updated.");
+    } catch (error: any) {
+      setPasswordError(error.message || "Could not change password right now.");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activityLoading) return;
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (activity?.[iso]) return;
+    setDayActive(iso, true).catch(() => {
+      // ignore failure; calendar stays as-is
+    });
+  }, [activity, activityLoading, setDayActive]);
 
   return (
     <>
@@ -94,12 +147,59 @@ export function DashboardPage({ onNotify }: Props) {
             </div>
             <div className="profile-actions">
               <button className="ghost" onClick={handleChangePassword}>
-                Change password
+                {changingPassword ? "Close password form" : "Change password"}
               </button>
               <button className="ghost" onClick={handleLogout}>
                 Log out
               </button>
             </div>
+            {changingPassword && (
+              <div className="password-form">
+                <form className="form" onSubmit={handleSubmitPassword}>
+                  <div className="password-grid">
+                    <label>
+                      Current password
+                      <input
+                        type="password"
+                        required
+                        value={currentPassword}
+                        onChange={(event) => setCurrentPassword(event.target.value)}
+                        autoComplete="current-password"
+                      />
+                    </label>
+                    <label>
+                      New password
+                      <input
+                        type="password"
+                        required
+                        value={newPassword}
+                        onChange={(event) => setNewPassword(event.target.value)}
+                        autoComplete="new-password"
+                      />
+                    </label>
+                    <label className="full-span">
+                      Confirm new password
+                      <input
+                        type="password"
+                        required
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        autoComplete="new-password"
+                      />
+                    </label>
+                  </div>
+                  {passwordError && <p className="password-error">{passwordError}</p>}
+                  <div className="button-row">
+                    <button type="submit" className="primary" disabled={savingPassword}>
+                      {savingPassword ? "Saving..." : "Save new password"}
+                    </button>
+                    <button type="button" className="ghost" onClick={handleChangePassword}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
 
           <div className="panel activity-card">
