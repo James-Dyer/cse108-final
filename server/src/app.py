@@ -564,7 +564,6 @@ def generate_assignmnet_overview(raw_instructions: str) -> str:
         - Maximum 200 words
         - No title or headers
         - Output only the assignment content
-        - use the word "monkey" somwhere in the overview
     """
     try:
         response = client.responses.create(
